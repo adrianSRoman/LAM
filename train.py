@@ -34,16 +34,16 @@ def get_device():
 device = get_device()
 
 model = ResNet18Latent(num_classes=370).to(device).to(torch.float64)
-learning_rate = 0.0001
+learning_rate = 0.001
 ###### loss function #####
-criterion = nn.L1Loss()
+criterion = nn.MSELoss()
 ######## optimizer #######
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 ########## Network Training Hyper-parameters ############
 
 epochs = 100 
-batch_size = 1
+batch_size = 8
 
 ################## Load Datasets ########################
 
@@ -89,14 +89,18 @@ def fit(model, dataloader, epoch):
     for i, data in tqdm(enumerate(dataloader), total=int(len(trainset)/dataloader.batch_size)):
         counter += 1
         _, img = data
-        img = img[:, 4, :, :]
+        img = img#[:, 4, :, :]
         img = img.to(device)
-        img = img.unsqueeze(1)
+        #img = img.unsqueeze(1)
         #img = torch.cat((torch.real(img), torch.imag(img)), dim=1)
         imag_label = img.squeeze((0)).detach().cpu().numpy()
         optimizer.zero_grad()
         outputs = model(img)
         outputs = outputs.unsqueeze(1)
+        #print("output shape", outputs.shape)
+        img = img[:, 4, :, :]
+        img = img.unsqueeze(1)
+        #print(img.shape)
         img_re_im = torch.cat((torch.real(img), torch.imag(img)), dim=1)
         outputs_re_im = torch.cat((torch.real(outputs), torch.imag(outputs)), dim=1)
         mse_loss = criterion(outputs_re_im, img_re_im)
@@ -108,7 +112,7 @@ def fit(model, dataloader, epoch):
             #print("output pred", output_pred.shape)
             #print("imag label", imag_label.shape)
             plt.subplot(1, 2, 1)
-            plt.imshow(np.real(imag_label[0]), cmap='viridis', interpolation='nearest')
+            plt.imshow(np.real(imag_label[0, 0]), cmap='viridis', interpolation='nearest')
             plt.colorbar(label='Intensity')
             plt.title('Label Visibility matrix - real')
             plt.xlabel('Column Index')
@@ -116,7 +120,7 @@ def fit(model, dataloader, epoch):
 
             # Plotting the second matrix
             plt.subplot(1, 2, 2)
-            plt.imshow(np.real(output_pred[0]), cmap='viridis', interpolation='nearest')
+            plt.imshow(np.real(output_pred[0, 0]), cmap='viridis', interpolation='nearest')
             plt.colorbar(label='Intensity')
             plt.title('Predicted Visibility matrix - real')
             plt.xlabel('Column Index')
@@ -141,9 +145,9 @@ def validate(model, dataloader, epoch):
         for i, data in tqdm(enumerate(dataloader), total=int(len(testset)/dataloader.batch_size)):
             counter += 1
             _, img = data
-            img = img[:, 4, :, :]
+            img = img#[:, 4, :, :]
             img = img.to(device)
-            img = img.unsqueeze(1)
+            #img = img.unsqueeze(1)
             # img = torch.cat((torch.real(img), torch.imag(img)), dim=1)
             outputs = model(img)
             outputs = outputs.unsqueeze(1)
