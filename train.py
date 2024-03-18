@@ -35,7 +35,7 @@ def get_device():
 device = get_device()
 
 model = ResNet18Latent(num_classes=370).to(device).to(torch.float64)
-learning_rate = 0.0001
+learning_rate = 0.0000005
 ###### loss function #####
 criterion = nn.MSELoss()
 ######## optimizer #######
@@ -44,8 +44,8 @@ gamma = 0.9  # Decay factor, you can adjust this as needed
 scheduler = ExponentialLR(optimizer, gamma=gamma)
 ########## Network Training Hyper-parameters ############
 
-epochs = 100 
-batch_size = 32
+epochs = 25 
+batch_size = 64
 
 ################## Load Datasets ########################
 
@@ -102,7 +102,7 @@ def fit(model, dataloader, epoch):
         img_re_im = torch.cat((torch.real(img), torch.imag(img)), dim=1)
         outputs_re_im = torch.cat((torch.real(outputs), torch.imag(outputs)), dim=1)
         mse_loss = criterion(outputs_re_im, img_re_im)
-        if counter % 300 == 0:
+        if counter % 200 == 0:
             plt.figure(figsize=(12, 6))
             #print(img)
             imag_label = img.squeeze((0)).detach().cpu().numpy()
@@ -110,7 +110,7 @@ def fit(model, dataloader, epoch):
             #print("output pred", output_pred.shape)
             #print("imag label", imag_label.shape)
             plt.subplot(1, 2, 1)
-            plt.imshow(np.real(imag_label[0, 0]), cmap='viridis', interpolation='nearest')
+            plt.imshow(np.abs(imag_label[0, 0]), cmap='viridis', interpolation='nearest')
             plt.colorbar(label='Intensity')
             plt.title('Label Visibility matrix - real')
             plt.xlabel('Column Index')
@@ -118,7 +118,7 @@ def fit(model, dataloader, epoch):
 
             # Plotting the second matrix
             plt.subplot(1, 2, 2)
-            plt.imshow(np.real(output_pred[0, 0]), cmap='viridis', interpolation='nearest')
+            plt.imshow(np.abs(output_pred[0, 0]), cmap='viridis', interpolation='nearest')
             plt.colorbar(label='Intensity')
             plt.title('Predicted Visibility matrix - real')
             plt.xlabel('Column Index')

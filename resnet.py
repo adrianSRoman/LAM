@@ -74,14 +74,14 @@ class ResNet18Latent(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x_re, x_im = x.real, x.imag
+        x_re, x_im = torch.real(x), torch.imag(x)
         # real
         out_re = F.relu(self.bn1_re(self.conv1_re(x_re)))
         out_re = self.layer1_re(out_re)
         out_re = self.layer2_re(out_re)
         out_re = self.layer3_re(out_re)
         out_re = self.layer4_re(out_re)
-        out_re = F.avg_pool2d(out_re, 4)
+        out_re = F.max_pool2d(out_re, 4)
         out_re = out_re.view(out_re.size(0), -1)
         out_re = self.linear_re(out_re)
         # imag
@@ -90,14 +90,14 @@ class ResNet18Latent(nn.Module):
         out_im = self.layer2_im(out_im)
         out_im = self.layer3_im(out_im)
         out_im = self.layer4_im(out_im)
-        out_im = F.avg_pool2d(out_im, 4)
+        out_im = F.max_pool2d(out_im, 4)
         out_im = out_im.view(out_im.size(0), -1)
         out_im = self.linear_im(out_im)
     
         out_reim = torch.cat((out_re, out_im), dim=-1)
         latent_x = self.linear_out1(out_reim)
         latent_x = self.linear_out2(latent_x)
-        latent_x = self.linear_out3(latent_x)
+        latent_x = F.relu(self.linear_out3(latent_x))
         latent_x = latent_x.type(torch.complex64)
         
         x = torch.diag_embed(latent_x).to(torch.complex128)
