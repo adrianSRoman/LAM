@@ -35,7 +35,7 @@ class BasicBlock(nn.Module):
 class ResNet18Latent(nn.Module):
     def __init__(self, num_classes=370):
         super(ResNet18Latent, self).__init__()
-        self.A = torch.from_numpy(np.load("./utils/steering.npy")).to(device)
+        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy")).to(device)
         self.A.requires_grad = False
 
         self.in_planes = 64

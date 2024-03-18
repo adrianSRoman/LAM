@@ -1,191 +1,63 @@
-import torch
-import torchvision
-import torch.nn as nn
-import matplotlib
-import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
-from torch.optim.lr_scheduler import ExponentialLR
-import torch.nn.functional as F
-import torch.optim as optim
-import os
-import time
-import numpy as np
 import argparse
-from tqdm import tqdm
-from torchvision import datasets
+import os
+
+import json5
+import numpy as np
+import torch
 from torch.utils.data import DataLoader
-from torchvision.utils import save_image
+from util.utils import initialize_config
 
 
-from torchsummary import summary
+def main(config, resume):
+    torch.manual_seed(config["seed"])  # for both CPU and GPU
+    np.random.seed(config["seed"])
 
-from resnet import *
-from dataloder import *
+    train_dataloader = DataLoader(
+        dataset=initialize_config(config["train_dataset"]),
+        batch_size=config["train_dataloader"]["batch_size"],
+        shuffle=config["train_dataloader"]["shuffle"],
+    )
 
-import h5py
-matplotlib.style.use('ggplot')
+    valid_dataloader = DataLoader(
+        dataset=initialize_config(config["validation_dataset"]),
+        num_workers=1,
+        batch_size=config["train_dataloader"]["batch_size"],
+        shuffle=False
+    )
 
-def get_device():
-    if torch.cuda.is_available():
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-    return device
+    model = initialize_config(config["model"]).to(torch.float64)
 
-device = get_device()
+    optimizer = torch.optim.Adam(
+        params=model.parameters(),
+        lr=config["optimizer"]["lr"],
+        betas=(config["optimizer"]["beta1"], config["optimizer"]["beta2"])
+    )
 
-model = ResNet18Latent(num_classes=370).to(device).to(torch.float64)
-learning_rate = 0.0000005
-###### loss function #####
-criterion = nn.MSELoss()
-######## optimizer #######
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-gamma = 0.9  # Decay factor, you can adjust this as needed
-scheduler = ExponentialLR(optimizer, gamma=gamma)
-########## Network Training Hyper-parameters ############
+    loss_function = initialize_config(config["loss_function"])
 
-epochs = 25 
-batch_size = 64
+    trainer_class = initialize_config(config["trainer"], pass_args=False)
 
-################## Load Datasets ########################
+    trainer = trainer_class(
+        config=config,
+        resume=resume,
+        model=model,
+        loss_function=loss_function,
+        optimizer=optimizer,
+        train_dataloader=train_dataloader,
+        validation_dataloader=valid_dataloader
+    )
 
-trainset = DatasetLoader("/home/asroman/repos/DBPN-Pytorch/data/metu_train9ch.hdf")
-testset = DatasetLoader("/home/asroman/repos/DBPN-Pytorch/data/metu_test9ch.hdf")
-
-# trainloader
-trainloader = DataLoader(
-    trainset, 
-    batch_size=batch_size,
-    shuffle=True
-)
-# testloader
-testloader = DataLoader(
-    testset, 
-    batch_size=batch_size, 
-    shuffle=False
-)
-
-################# Sparse Loss Applied to Latent ################
-
-def sparse_loss(autoencoder, images):
-    loss = 0
-    values = images
-    upsamp_cnt = 0
-    for i in range(len(model_children)):
-#         print("layers children", model_children[i])
-#         print("shape of values", values.shape)
-        values_re = F.relu((model_children[i](values.real)))
-        values_im = F.relu((model_children[i+len(model_children)//2](values.imag)))
-        values = torch.complex(values_re, values_im)
-#         print("outputs shape", values.shape)
-        loss += torch.mean(torch.abs(values))
-    return loss
-
-################# Training & Evaluation Loop ###################
-
-def fit(model, dataloader, epoch):
-    print('Training')
-    model.train()
-    running_loss = 0.0
-    counter = 0
-    for i, data in tqdm(enumerate(dataloader), total=int(len(trainset)/dataloader.batch_size)):
-        counter += 1
-        _, img = data
-        img = img[:, 3, :, :]
-        img = img.to(device)
-        img = img.unsqueeze(1)
-        #img = torch.cat((torch.real(img), torch.imag(img)), dim=1)
-        imag_label = img.squeeze((0)).detach().cpu().numpy()
-        optimizer.zero_grad()
-        outputs = model(img)
-        outputs = outputs.unsqueeze(1)
-        img_re_im = torch.cat((torch.real(img), torch.imag(img)), dim=1)
-        outputs_re_im = torch.cat((torch.real(outputs), torch.imag(outputs)), dim=1)
-        mse_loss = criterion(outputs_re_im, img_re_im)
-        if counter % 200 == 0:
-            plt.figure(figsize=(12, 6))
-            #print(img)
-            imag_label = img.squeeze((0)).detach().cpu().numpy()
-            output_pred = outputs.squeeze((0)).detach().cpu().numpy()
-            #print("output pred", output_pred.shape)
-            #print("imag label", imag_label.shape)
-            plt.subplot(1, 2, 1)
-            plt.imshow(np.abs(imag_label[0, 0]), cmap='viridis', interpolation='nearest')
-            plt.colorbar(label='Intensity')
-            plt.title('Label Visibility matrix - real')
-            plt.xlabel('Column Index')
-            plt.ylabel('Row Index')
-
-            # Plotting the second matrix
-            plt.subplot(1, 2, 2)
-            plt.imshow(np.abs(output_pred[0, 0]), cmap='viridis', interpolation='nearest')
-            plt.colorbar(label='Intensity')
-            plt.title('Predicted Visibility matrix - real')
-            plt.xlabel('Column Index')
-            plt.ylabel('Row Index')
-            plt.savefig('overfit.png')
-        
-        loss = mse_loss
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-    
-    epoch_loss = running_loss / counter
-    print(f"Train Loss: {loss:.12f}")
-    return epoch_loss
-
-def validate(model, dataloader, epoch):
-    print('Validating')
-    model.eval()
-    running_loss = 0.0
-    counter = 0
-    with torch.no_grad():
-        for i, data in tqdm(enumerate(dataloader), total=int(len(testset)/dataloader.batch_size)):
-            counter += 1
-            _, img = data
-            img = img[:, 4, :, :]
-            img = img.to(device)
-            img = img.unsqueeze(1)
-            # img = torch.cat((torch.real(img), torch.imag(img)), dim=1)
-            outputs = model(img)
-            outputs = outputs.unsqueeze(1)
-            img_re_im = torch.cat((torch.real(img), torch.imag(img)), dim=1)           
-            outputs_re_im = torch.cat((torch.real(outputs), torch.imag(outputs)), dim=1)
-            loss = criterion(outputs_re_im, img_re_im)
-            running_loss += loss.item()
-    epoch_loss = running_loss / counter
-    print(f"Val Loss: {loss:.8f}")  
-    # save the reconstructed images every 5 epochs
-#     if epoch % 5 == 0:
-#         outputs = outputs.view(outputs.size(0), 1, 32, 32).cpu().data
-#         save_image(outputs, f"./outputs/images/reconstruction{epoch}.png")
-    return epoch_loss
+    trainer.train()
 
 
-best_val_loss = float('inf')
-best_epoch = 0
-train_loss = []
-val_loss = []
-start = time.time()
-for epoch in range(epochs):
-    print(f"Epoch {epoch+1} of {epochs}")
-    train_epoch_loss = fit(model, trainloader, epoch)
-    val_epoch_loss = validate(model, testloader, epoch)
-    train_loss.append(train_epoch_loss)
-    scheduler.step()
-    val_loss.append(val_epoch_loss)
-    if val_epoch_loss < best_val_loss:
-        best_val_loss = val_epoch_loss
-        best_epoch = epoch
-        print(f"Best eval loss seen at epoch {epoch}", best_val_loss)
-        torch.save(model.state_dict(), 'best_model_weights.pth')
-end = time.time()
- 
-print(f"{(end-start)/60:.3} minutes")
-plt.figure(figsize=(10, 7))
-plt.plot(train_loss, color='orange', label='train loss')
-plt.plot(val_loss, color='red', label='validataion loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.savefig('./loss.png')
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Latent Acoustic Map (LAM)")
+    parser.add_argument("-C", "--configuration", required=True, type=str, help="Configuration (*.json).")
+    parser.add_argument("-R", "--resume", action="store_true", help="Resume experiment from latest checkpoint.")
+    args = parser.parse_args()
+
+    configuration = json5.load(open(args.configuration))
+    configuration["experiment_name"], _ = os.path.splitext(os.path.basename(args.configuration))
+    configuration["config_path"] = args.configuration
+
+    main(configuration, resume=args.resume)
