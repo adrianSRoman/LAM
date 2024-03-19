@@ -33,10 +33,13 @@ class BasicBlock(nn.Module):
         return out
 
 class ResNet18Latent(nn.Module):
-    def __init__(self, num_classes=370):
+    def __init__(self, mode=None, num_classes=370):
         super(ResNet18Latent, self).__init__()
         self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy")).to(device)
         self.A.requires_grad = False
+        
+        # Input feature mode
+        self.mode = mode
 
         self.in_planes = 64
         self.conv1_re = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
@@ -75,6 +78,7 @@ class ResNet18Latent(nn.Module):
 
     def forward(self, x):
         x_re, x_im = torch.real(x), torch.imag(x)
+        
         # real
         out_re = F.relu(self.bn1_re(self.conv1_re(x_re)))
         out_re = self.layer1_re(out_re)

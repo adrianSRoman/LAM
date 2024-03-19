@@ -165,12 +165,6 @@ class BaseTrainer:
             return False
 
     @staticmethod
-    def _transform_pesq_range(pesq_score):
-        """transform PESQ range. From [-0.5 ~ 4.5] to [0 ~ 1].
-        """
-        return (pesq_score + 0.5) / 5
-
-    @staticmethod
     def _print_networks(nets: list):
         print(f"This project contains {len(nets)} networks, the number of the parameters: ")
         params_of_all_networks = 0
