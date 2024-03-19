@@ -52,17 +52,21 @@ class Trainer(BaseTrainer):
 
             S_out = self.model(S_in)
             if i <= visualize_limit:
-                fig, ax = plt.subplots(2, 1)
-                for j, y in enumerate([S_in.squeeze(1), S_out]):
-                    vis_matrix = y.detach().cpu().numpy()
-                    im = ax[j].imshow(np.abs(vis_matrix[0]), cmap='viridis', interpolation='nearest')
-                    fig.colorbar(im, ax=ax[j], label='Intensity')
+                fig, ax = plt.subplots(1, 2)
+                mat_out = S_out.detach().cpu().numpy()
+                mat_in = S_in.squeeze(1).detach().cpu().numpy()
+                min_val = min(np.abs(mat_out.min().item()), np.abs(mat_in.min().item()))
+                max_val = max(np.abs(mat_out.max().item()), np.abs(mat_in.max().item()))
+                for j, y in enumerate([mat_in, mat_out]):
+                    vis_matrix = y
+                    im = ax[j].imshow(np.abs(vis_matrix[0]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
                     if j == 0:
-                        ax[j].set_title("Label Visibility matrix - real")
+                        ax[j].set_title("Label Visibility matrix - mag")
                     else:
-                        ax[j].set_title("Estimated Visibility matrix - real")
+                        ax[j].set_title("Estimated Visibility matrix - mag")
                     ax[j].set_xlabel('Column Index')
                     ax[j].set_ylabel('Row Index')
+                #fig.colorbar(im, ax=ax[1], label='Intensity')
                 plt.tight_layout()
                 self.writer.add_figure(f"Visibility matrix - sample {i}", fig, epoch)
         return 0
