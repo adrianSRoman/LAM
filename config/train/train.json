@@ -9,9 +9,9 @@
         "epochs": 40,
         "save_checkpoint_interval": 10,
         "validation": {
-            "interval": 2,
-            "find_max": true,
-            "custom": {
+		"interval": 2,
+		"find_max": true,
+		"custom": {
                 "visualize_limit": 20
             }
         }
@@ -19,7 +19,9 @@
     "model": {
         "module": "model.resnet",
         "main": "ResNet18Latent",
-        "args": {}
+	"args": {
+		"mode": "mag_phase"
+	}
     },
     "loss_function": {
         "module": "model.loss",

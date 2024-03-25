@@ -2,11 +2,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.nn import init
+import torch.nn.init as init
 import numpy as np
 from torchsummary import summary
 
 device = 'cuda:0'
+
+def initialize_weights(module):
+    if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+        init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            init.constant_(module.bias, 0)
+    elif isinstance(module, nn.BatchNorm2d):
+        init.constant_(module.weight, 1)
+        init.constant_(module.bias, 0)
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -49,7 +58,6 @@ class ResNet18Latent(nn.Module):
         self.layer3_re = self._make_layer(BasicBlock, 256, 2, stride=2)
         self.layer4_re = self._make_layer(BasicBlock, 512, 2, stride=2)
         self.linear_re = nn.Linear(512*BasicBlock.expansion, 2*num_classes)
-        init.normal_(self.linear_re.weight, mean=0.0, std=0.000001)
     
         self.in_planes = 64
         self.conv1_im = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
@@ -59,14 +67,13 @@ class ResNet18Latent(nn.Module):
         self.layer3_im = self._make_layer(BasicBlock, 256, 2, stride=2)
         self.layer4_im = self._make_layer(BasicBlock, 512, 2, stride=2)
         self.linear_im = nn.Linear(512*BasicBlock.expansion, 2*num_classes)
-        init.normal_(self.linear_im.weight, mean=0.0, std=0.000001)
         
         self.linear_out1 = nn.Linear(4*num_classes, 3*num_classes)
-        init.normal_(self.linear_out1.weight, mean=0.0, std=0.000001)
         self.linear_out2 = nn.Linear(3*num_classes, 2*num_classes)
-        init.normal_(self.linear_out2.weight, mean=0.0, std=0.000001)
         self.linear_out3 = nn.Linear(2*num_classes, num_classes)
-        init.normal_(self.linear_out3.weight, mean=0.0, std=0.000001)
+
+        # use He initialization for ReLu-based network
+        self.apply(initialize_weights)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
