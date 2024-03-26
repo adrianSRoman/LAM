@@ -1,0 +1,64 @@
+{
+    "seed": 0,
+    "description": "...des",
+    "root_dir": "/scratch/data/repos/LAM",
+    "cudnn_deterministic": false,
+    "trainer": {
+        "module": "trainer.trainer",
+        "main": "Trainer",
+        "epochs": 40,
+        "save_checkpoint_interval": 10,
+        "validation": {
+		"interval": 2,
+		"find_max": true,
+		"custom": {
+                "visualize_limit": 20
+            }
+        }
+    },
+    "model": {
+        "module": "model.cdbpn",
+        "main": "CDBPN",
+	"args": {
+		"num_channels": 1,
+		"base_filter": 32,
+		"feat": 128,
+		"num_stages": 10, 
+		"scale_factor":2
+	}
+    },
+    "loss_function": {
+        "module": "model.loss",
+        "main": "l1_loss",
+        "args": {}
+    },
+    "optimizer": {
+        "lr": 1e-8,
+        "beta1": 0.9,
+        "beta2": 0.999
+    },
+    "train_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/home/asroman/repos/DBPN-Pytorch/data/metu_train9ch.hdf",
+            "freq_band": 3,
+	    "mode": "train"
+        }
+    },
+    "validation_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/home/asroman/repos/DBPN-Pytorch/data/metu_test9ch.hdf",
+            "freq_band": 3,
+	    "mode": "validation"
+        }
+    },
+    "train_dataloader": {
+        "batch_size": 32,
+        "num_workers": 20,
+        "shuffle": true,
+        "pin_memory": true
+    }
+}
