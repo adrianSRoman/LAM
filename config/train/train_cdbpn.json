@@ -29,11 +29,11 @@
     },
     "loss_function": {
         "module": "model.loss",
-        "main": "l1_loss",
+        "main": "mse_loss",
         "args": {}
     },
     "optimizer": {
-        "lr": 1e-8,
+        "lr": 1e-4,
         "beta1": 0.9,
         "beta2": 0.999
     },
