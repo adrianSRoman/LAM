@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from trainer.plot_utils import *
+
 from trainer.base_trainer import BaseTrainer
 plt.switch_backend('agg')
 
@@ -24,17 +26,17 @@ class Trainer(BaseTrainer):
 
     def _train_epoch(self, epoch):
         loss_total = 0.0
-
+        
         for i, S_in in enumerate(self.train_data_loader):
             S_in = S_in.to(self.device)
             S_in = S_in.unsqueeze(1)
             self.optimizer.zero_grad()
-            S_out = self.model(S_in)
+            S_out,_ = self.model(S_in)
             S_out = S_out.unsqueeze(1)
-            S_in_re_im = torch.cat((torch.real(S_in), torch.imag(S_in)), dim=1)
-            S_out_re_im = torch.cat((torch.real(S_out), torch.imag(S_out)), dim=1)
+            #S_in_re_im = torch.cat((torch.real(S_in), torch.imag(S_in)), dim=1)
+            #S_out_re_im = torch.cat((torch.real(S_out), torch.imag(S_out)), dim=1)
 
-            loss = self.loss_function(S_in_re_im, S_out_re_im)
+            loss = self.loss_function(torch.angle(S_out), torch.angle(S_in)) #S_in_re_im, S_out_re_im)
             loss.backward()
             self.optimizer.step()
 
@@ -50,7 +52,21 @@ class Trainer(BaseTrainer):
             S_in = S_in.to(self.device)
             S_in = S_in.unsqueeze(1)
 
-            S_out = self.model(S_in)
+            S_out, latent_x = self.model(S_in)
+            latent_I = torch.real(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
+            latent_I /= latent_I.max()
+            latent_I = np.tile(latent_I, (3, 1))
+            R_field = get_field()
+            # Generated tesselation for Robinson projection
+            arg_lonticks = np.linspace(-180, 180, 5)
+            fig, ax, triangulation = draw_map(latent_I, R_field,
+                    lon_ticks=arg_lonticks,
+                    catalog=None,
+                    show_labels=True,
+                    show_axis=True)
+            
+            self.writer.add_figure(f"Acoustic Map - latent X {i}", fig, epoch)
+
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 2)
                 mat_out = S_out.detach().cpu().numpy()
@@ -59,7 +75,7 @@ class Trainer(BaseTrainer):
                 max_val = max(np.abs(mat_out.max().item()), np.abs(mat_in.max().item()))
                 for j, y in enumerate([mat_in, mat_out]):
                     vis_matrix = y
-                    im = ax[j].imshow(np.abs(vis_matrix[0]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
+                    im = ax[j].imshow(np.angle(vis_matrix[0]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
                     if j == 0:
                         ax[j].set_title("Label Visibility matrix - mag")
                     else:
