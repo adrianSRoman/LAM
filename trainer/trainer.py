@@ -30,13 +30,13 @@ class Trainer(BaseTrainer):
         for i, S_in in enumerate(self.train_data_loader):
             S_in = S_in.to(self.device)
             S_in = S_in.unsqueeze(1)
-            self.optimizer.zero_grad()
             S_out,_ = self.model(S_in)
             S_out = S_out.unsqueeze(1)
             #S_in_re_im = torch.cat((torch.real(S_in), torch.imag(S_in)), dim=1)
             #S_out_re_im = torch.cat((torch.real(S_out), torch.imag(S_out)), dim=1)
 
             loss = self.loss_function(torch.angle(S_out), torch.angle(S_in)) #S_in_re_im, S_out_re_im)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
