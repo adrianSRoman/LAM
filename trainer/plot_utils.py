@@ -163,7 +163,6 @@ def get_field(min_freq=1500, max_freq=1500,nbands=10):
     sh_order = nyquist_rate(dev_xyz, wl_min) # Maximum order of complex plane waves that can be imaged by the instrument.
     sh_order=10
     R = fibonacci(sh_order)
-    print("sh order", sh_order)
     R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(50))
     R = R[:, R_mask]  # Shrink visible view to avoid border effects.
     return R
@@ -290,8 +289,7 @@ def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, 
     R_el_min, R_el_max = np.around([np.min(R_el), np.max(R_el)])
     R_az_min, R_az_max = np.around([np.min(R_az), np.max(R_az)])
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    fig, ax = plt.subplots()
     bm = basemap.Basemap(projection='mill',
                          llcrnrlat=R_el_min, urcrnrlat=R_el_max,
                          llcrnrlon=R_az_min, urcrnrlon=R_az_max,
