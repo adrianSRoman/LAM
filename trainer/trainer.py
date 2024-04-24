@@ -35,7 +35,7 @@ class Trainer(BaseTrainer):
             #S_in_re_im = torch.cat((torch.real(S_in), torch.imag(S_in)), dim=1)
             #S_out_re_im = torch.cat((torch.real(S_out), torch.imag(S_out)), dim=1)
 
-            loss = self.loss_function(torch.angle(S_out), torch.angle(S_in)) #S_in_re_im, S_out_re_im)
+            loss = self.loss_function(S_out, S_in) #S_in_re_im, S_out_re_im)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -53,19 +53,20 @@ class Trainer(BaseTrainer):
             S_in = S_in.unsqueeze(1)
 
             S_out, latent_x = self.model(S_in)
-            latent_I = torch.real(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
+            latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
             latent_I /= latent_I.max()
             latent_I = np.tile(latent_I, (3, 1))
             R_field = get_field()
             ## Generated tesselation for Robinson projection
-            #arg_lonticks = np.linspace(-180, 180, 5)
-            #fig, ax, triangulation = draw_map(latent_I, R_field,
-            #        lon_ticks=arg_lonticks,
-            #        catalog=None,
-            #        show_labels=True,
-            #        show_axis=True)
-            #
-            #self.writer.add_figure(f"Acoustic Map - latent {i}", fig, epoch)
+            if i <= visualize_limit:
+                arg_lonticks = np.linspace(-180, 180, 5)
+                fig, ax, triangulation = draw_map(latent_I, R_field,
+                        lon_ticks=arg_lonticks,
+                        catalog=None,
+                        show_labels=True,
+                        show_axis=True)
+            
+                self.writer.add_figure(f"Acoustic Map - latent {i}", fig, epoch)
 
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 4)

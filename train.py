@@ -25,7 +25,7 @@ def main(config, resume):
         shuffle=False
     )
 
-    model = initialize_config(config["model"]).to(torch.float64)
+    model = initialize_config(config["model"])
 
     optimizer = torch.optim.Adam(
         params=model.parameters(),
