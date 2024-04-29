@@ -27,7 +27,7 @@ class Trainer(BaseTrainer):
     def _train_epoch(self, epoch):
         loss_total = 0.0
         
-        for i, S_in in enumerate(self.train_data_loader):
+        for i, (S_in, _) in enumerate(self.train_data_loader):
             S_in = S_in.to(self.device)
             S_in = S_in.unsqueeze(1)
             S_out,_ = self.model(S_in)
@@ -48,11 +48,14 @@ class Trainer(BaseTrainer):
     @torch.no_grad()
     def _validation_epoch(self, epoch):
         visualize_limit = self.validation_custom_config["visualize_limit"]
-        for i, S_in in enumerate(self.validation_data_loader):
+        loss_total = 0.0
+
+        for i, (S_in, apgd_label) in enumerate(self.validation_data_loader):
             S_in = S_in.to(self.device)
             S_in = S_in.unsqueeze(1)
-
             S_out, latent_x = self.model(S_in)
+            loss = self.loss_function(S_out.unsqueeze(1), S_in)
+            loss_total += loss.item()
             latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
             latent_I /= latent_I.max()
             latent_I = np.tile(latent_I, (3, 1))
@@ -67,6 +70,19 @@ class Trainer(BaseTrainer):
                         show_axis=True)
             
                 self.writer.add_figure(f"Acoustic Map - latent {i}", fig, epoch)
+
+            if i <= visualize_limit:
+                arg_lonticks = np.linspace(-180, 180, 5)
+                apgd_map = torch.abs(apgd_label[0])
+                apgd_map /= apgd_map.max()
+                apgd_map = np.tile(apgd_map, (3, 1))
+                fig, ax, triangulation = draw_map(apgd_map, R_field,
+                        lon_ticks=arg_lonticks,
+                        catalog=None,
+                        show_labels=True,
+                        show_axis=True)
+            
+                self.writer.add_figure(f"Acoustic Map (APGD) - latent {i}", fig, epoch)
 
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 4)
@@ -87,4 +103,6 @@ class Trainer(BaseTrainer):
                 #fig.colorbar(im, ax=ax[1], label='Intensity')
                 plt.tight_layout()
                 self.writer.add_figure(f"Visibility matrix - sample {i}", fig, epoch)
+        dl_len = len(self.validation_data_loader)
+        self.writer.add_scalar(f"Validation/Loss", loss_total / dl_len, epoch)
         return 0
