@@ -5,6 +5,18 @@ import math
 
 device = 'cuda:0'
 
+class ReTanh(torch.nn.Module):
+    '''
+    Rectified Hyperbolic Tangent
+    '''
+    def __init__(self, alpha=1.0):
+        super().__init__()
+        self.alpha = alpha
+
+    def forward(self, x):
+        beta = self.alpha / torch.tanh(torch.tensor(1.0, dtype=x.dtype))
+        return torch.max(torch.tensor(1e-6, dtype=x.dtype), beta * torch.tanh(x))
+
 class BackProjLayer(torch.nn.Module):
     """Spherical Convolutional Neural Netork.
     """
@@ -25,8 +37,9 @@ class BackProjLayer(torch.nn.Module):
         else:
             self.tau = torch.nn.Parameter(tau)
             self.D = torch.nn.Parameter(D)
-            
-
+        self.conv1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, padding=0)
+        self.retanh = ReTanh(alpha=1.0)
+    
     def reset_parameters(self):
         std = 1e-5
         self.tau.data.normal_(0, std)
@@ -50,6 +63,8 @@ class BackProjLayer(torch.nn.Module):
         latent_x = torch.matmul(self.D.conj().T, Vs)
         latent_x = torch.linalg.norm(latent_x, dim=2) ** 2 # norm operation along the second dimension and square the result
         latent_x -= self.tau
+        latent_x = self.retanh(latent_x) # apply sparcifier operator
+        latent_x = F.relu(self.conv1(latent_x))
         expanded_A = self.A.unsqueeze(0) # expand to unit in batch dimension
         out = torch.einsum('nij,bjk,nkl->bil', expanded_A, torch.diag_embed(latent_x.cdouble()), expanded_A.transpose(1, 2).conj())
         return out, latent_x
