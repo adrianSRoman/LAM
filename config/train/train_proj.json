@@ -1,0 +1,59 @@
+{
+    "seed": 0,
+    "description": "...des",
+    "root_dir": "/scratch/data/repos/LAM",
+    "cudnn_deterministic": false,
+    "trainer": {
+        "module": "trainer.trainer",
+        "main": "Trainer",
+        "epochs": 100,
+        "save_checkpoint_interval": 10,
+        "validation": {
+		"interval": 3,
+		"find_max": true,
+		"custom": {
+                "visualize_limit": 20
+            }
+        }
+    },
+    "model": {
+        "module": "model.bproj",
+        "main": "BackProjLayer",
+	"args": {
+	}
+    },
+    "loss_function": {
+        "module": "model.loss",
+        "main": "l1_loss",
+        "args": {}
+    },
+    "optimizer": {
+        "lr": 0.000001,
+        "beta1": 0.9,
+        "beta2": 0.999
+    },
+    "train_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/home/asroman/repos/DBPN-Pytorch/data/metu_train9ch_apgd.hdf",
+            "freq_band": 3,
+	    "mode": "train"
+        }
+    },
+    "validation_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/home/asroman/repos/DBPN-Pytorch/data/metu_test9ch_apgd.hdf",
+            "freq_band": 3,
+	    "mode": "validation"
+        }
+    },
+    "train_dataloader": {
+        "batch_size": 16,
+        "num_workers": 20,
+        "shuffle": true,
+        "pin_memory": true
+    }
+}
