@@ -8,8 +8,8 @@ class Dataset(data.Dataset):
         self.file_path = dataset
         self.freq_band = freq_band
         self.file = h5py.File(self.file_path, 'r')
-        self.audio_data = self.file['em32']#[264:264+64*4] # MIC audio data (nframes, nsamps, nch)
-        self.label_data = self.file['apgd']#[264:264+64*4] # visibility graph matrices (nframes, nbands, nch, nch)
+        self.audio_data = self.file['em32'] # MIC audio data (nframes, nsamps, nch)
+        self.label_data = self.file['apgd'] # visibility graph matrices (nframes, nbands, nch, nch)
 
     def __getitem__(self, index):
 
