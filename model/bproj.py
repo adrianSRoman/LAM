@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 from torch import nn
+import torch.nn.functional as F
+
 import math
 
 device = 'cuda:0'
@@ -37,7 +39,6 @@ class BackProjLayer(torch.nn.Module):
         else:
             self.tau = torch.nn.Parameter(tau)
             self.D = torch.nn.Parameter(D)
-        self.conv1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, padding=0)
         self.retanh = ReTanh(alpha=1.0)
     
     def reset_parameters(self):
@@ -63,8 +64,7 @@ class BackProjLayer(torch.nn.Module):
         latent_x = torch.matmul(self.D.conj().T, Vs)
         latent_x = torch.linalg.norm(latent_x, dim=2) ** 2 # norm operation along the second dimension and square the result
         latent_x -= self.tau
-        latent_x = self.retanh(latent_x) # apply sparcifier operator
-        latent_x = F.relu(self.conv1(latent_x))
+        #latent_x = self.retanh(latent_x) # apply sparcifier operator
         expanded_A = self.A.unsqueeze(0) # expand to unit in batch dimension
         out = torch.einsum('nij,bjk,nkl->bil', expanded_A, torch.diag_embed(latent_x.cdouble()), expanded_A.transpose(1, 2).conj())
         return out, latent_x
