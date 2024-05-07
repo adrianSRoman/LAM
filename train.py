@@ -30,7 +30,8 @@ def main(config, resume):
     optimizer = torch.optim.Adam(
         params=model.parameters(),
         lr=config["optimizer"]["lr"],
-        betas=(config["optimizer"]["beta1"], config["optimizer"]["beta2"])
+        betas=(config["optimizer"]["beta1"], config["optimizer"]["beta2"]),
+        eps=1e-8
     )
 
     loss_function = initialize_config(config["loss_function"])
