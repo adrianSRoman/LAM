@@ -1,6 +1,4 @@
 import os
-import cv2
-import csv
 import random
 import librosa
 import soundfile as sf
@@ -11,7 +9,6 @@ import scipy
 import scipy.signal as signal
 
 from utils import *
-from spatializer import *
 
 DCASE_EVENTS = "/scratch/data/repos/SpatialScaper/datasets/sound_event_datasets/FSD50K_FMA"
 
@@ -44,68 +41,61 @@ def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLAS
             # ensure no subdirectories
             if len(dirnames) == 0:
                 for track in tracks:
-                    tracks_list.append(os.path.join(dirpath, track))        
-
+                    tracks_list.append((os.path.join(dirpath, track), DCASE_SOUND_EVENT_CLASSES[event_class]))        
+    return tracks_list
 
 class AudioSynthesizer:
-    def __init__(self, rirs, source_coords, audio_tracks_paths, min_duration, max_duration, total_duration):
+    def __init__(self, rirs, source_coords, audio_tracks_paths, total_duration):
         self.rirs = rirs # room_impulse responses
         self.source_coords = source_coords
         self.audio_tracks_paths = audio_tracks_paths
-        self.min_duration = min_duration
-        self.max_duration = max_duration
         self.total_duration = total_duration
-        self.channel_num = self.rirs[0].shape[1] # channel count in array
-        self.audio_fps = 10 	# 100ms
+        self.num_chans = self.rirs[0].shape[1] # channel count in array
         self.audio_FS = 24000	# sampling rate (24kHz)
-        self.win_size = 512	# window size for spatial convolutions	
-        self.stream_total_frames = int(self.total_duration * self.audio_fps)  # Calculate total frames based on total_duration
+        self.total_frames = int(self.total_duration * self.audio_FS)  # Calculate total frames based on total_duration
 
 
-    def generate_audio_mix_spatialized(self, mix_name):
-        self.generate_track_metadata(mix_name)
-        audio_mix = np.zeros((self.channel_num, self.audio_FS*self.total_duration), dtype=np.float64)
-        for event_data in self.events_history:
-            # Load the video file
-            audio_sig, sr = librosa.load(event_data['path'], sr=None, mono=None)
-            # Extract the audio
-            start_idx = int(self.audio_FS * event_data['start_frame']/self.audio_fps)
-            duration_samps = int(self.audio_FS * event_data['duration']/self.audio_fps)
-            audio_sig = librosa.resample(audio_sig.mean(axis=0), orig_sr=sr, target_sr=self.audio_FS)
-            audio_sig = self.spatialize_audio_event(audio_sig, event_data['rir_id'], duration_samps)
-            audio_mix[:, start_idx:start_idx+audio_sig.shape[0]] += audio_sig.T #.mean(axis=0) # TODO: [fix] this may cause a 1 frame delay between audio and video streams
-            audio_mix /= audio_mix.max()
-            sf.write(f'{mix_name}.wav', audio_mix.T, self.audio_FS)
-
-
-    def spatialize_audio_event(self, track_name):
+    def spatialize_single_audio_event(self, track_num=0, dest_dir="./output"):
         # get random room impulse reponse
         rir_idx = random.randrange(len(self.rirs))
-        rir = self.rirs[rir_idx]
-        coord = self.source_coords[rir_idx]
+        rir_sig, coord = self.rirs[rir_idx], self.source_coords[rir_idx]
         # get random sound event to spatialize
         event_idx = random.randrange(len(self.audio_tracks_paths))
-        event = self.audio_tracks_paths[event_idx]
-        print(coord, event)
-        ## get event up to a given duration
-        #eventsig = eventsig[:dur_samps+trim_samps]
-        ## perform event convolution with rooom impulse response
-        #print(rirs.shape, eventsig.shape)
-        #return output_signal
+        event, class_id = self.audio_tracks_paths[event_idx]
+        event_sig, sr = librosa.load(event, sr=None, mono=None)
+        if sr != self.audio_FS:
+            event_sig = librosa.resample(event_sig, orig_sr=sr, target_sr=self.audio_FS)
+        event_sig = event_sig.reshape(-1, 1)
+        event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
+        if event_sig.shape[0] < self.total_frames:
+            temp_event = np.zeros((self.total_frames, self.num_chans))
+            start_idx = random.randint(0, self.total_frames-event_sig.shape[0]) # choose a starting index within fixed duration
+            temp_event[start_idx:start_idx+event_sig.shape[0], :] = event_sig
+            event_sig = temp_event
+        else:
+            # may need to apply some cross fading to prevent discontinuities that can sound as "pop's"
+            #win = signal.windows.tukey(len())
+            event_sig = event_sig[:self.total_frames]
+
+        conv_sig = np.zeros_like(event_sig)
+        for ichan in range(self.num_chans):
+            conv_sig[:, ichan] = np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
+        
+        sf.write(os.path.join(dest_dir, f'{track_num+1:03d}_{class_id}_{round(coord[1])}_{round(coord[2])}.wav'), conv_sig, self.audio_FS)
 
 
 # Example usage:
 rirs, source_coords = get_audio_spatial_data(aud_fmt="em32", room="METU")
 audio_tracks_paths = get_audio_tracks() 
-#[os.path.join(directory_path, filename) for filename in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, filename))]
-min_duration = 2  # Minimum duration for overlay videos (in seconds)
-max_duration = 3  # Maximum duration for overlay videos (in seconds)
-total_duration = 15
-track_name = "fold1_room002_mix"  # File to save overlay info
-AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, min_duration, max_duration, total_duration)
+n_tracks = 200
+total_duration = 2
+dest_dir = "./output"
+os.makedirs(dest_dir, exist_ok=True)
+AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
 
 print("Synthesizing spatial audio")
-AudioSynth.spatialize_audio_event(track_name)
+for track_num in tqdm(range(n_tracks)):
+    AudioSynth.spatialize_single_audio_event(track_num, dest_dir)
 
 
 
