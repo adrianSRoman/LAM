@@ -32,7 +32,6 @@ DCASE_SOUND_EVENT_CLASSES = {
 LEAVE_OUT_CLASSES = ["clapping", "telephone", "laughter", "domesticSounds", "footsteps",
                     "doorCupboard", "musicInstrument",  "waterTap", "bell", "knock"]
 
-
 def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLASSES, split="train"):
     tracks_list = []
     for event_class in DCASE_SOUND_EVENT_CLASSES.keys():
@@ -58,43 +57,13 @@ class AudioSynthesizer:
         self.total_frames = int(self.total_duration * self.audio_FS)  # Calculate total frames based on total_duration
 
 
-    def spatialize_single_audio_event(self, track_num=0, dest_dir="./output"):
-        # get random room impulse reponse
-        rir_idx = random.randrange(len(self.rirs))
-        rir_sig, coord = self.rirs[rir_idx], self.source_coords[rir_idx]
-        # get random sound event to spatialize
-        event_idx = random.randrange(len(self.audio_tracks_paths))
-        # load audio and resample if neccesary
-        event, class_id = self.audio_tracks_paths[event_idx]
-        event_sig, sr = librosa.load(event, sr=None, mono=None)
-        if sr != self.audio_FS:
-            event_sig = librosa.resample(event_sig, orig_sr=sr, target_sr=self.audio_FS)
-        event_sig = event_sig.reshape(-1, 1)
-        event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
-        # place event within the pre-defined duration
-        if event_sig.shape[0] < self.total_frames:
-            temp_event = np.zeros((self.total_frames, self.num_chans))
-            start_idx = random.randint(0, self.total_frames-event_sig.shape[0]) # choose a starting index within fixed duration
-            temp_event[start_idx:start_idx+event_sig.shape[0], :] = event_sig
-            event_sig = temp_event
-        else:
-            # may need to apply some cross fading to prevent discontinuities that can sound as "pop's"
-            win = signal.windows.tukey(self.total_frames, 0.005)
-            win = np.tile(win.reshape(-1, 1), (1, 32))
-            event_sig = event_sig[:self.total_frames] * win
-
-        conv_sig = np.zeros_like(event_sig)
-        for ichan in range(self.num_chans):
-            conv_sig[:, ichan] = np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
-        
-        sf.write(os.path.join(dest_dir, f'{track_num+1:03d}_{class_id}_{round(coord[1])}_{round(coord[2])}.wav'), conv_sig, self.audio_FS)
-
-
     def spatialize_audio_events(self, n_polyphony=1, track_num=0, dest_dir="./output"):
         # generate a copy of the available rirs to be used
         rirs_list, coords_list = copy.deepcopy(self.rirs), copy.deepcopy(self.source_coords)
         # intitalize convolve audio track
         conv_sig = np.zeros((self.total_frames, self.num_chans))
+        # Define output filename: <track_num>_<polyphony>_<class_id_1>_<azi_1>_<ele_1>_<class_id_2>_<azi_2>_<ele_2>_... .wav
+        output_filename = f"{track_num+1:03d}_polyphony{n_polyphony}"
         for _ in range(n_polyphony):
             # get random room impulse reponse
             rir_idx = random.randrange(len(rirs_list))
@@ -123,15 +92,16 @@ class AudioSynthesizer:
             for ichan in range(self.num_chans):
                 conv_sig[:, ichan] += np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
         
-        sf.write(os.path.join(dest_dir, f'{track_num+1:03d}_{class_id}_{round(coord[1])}_{round(coord[2])}_{n_polyphony}.wav'), conv_sig, self.audio_FS)
+            output_filename += f"_{class_id}_{round(coord[1])}_{round(coord[2])}"
+        sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
 
 
 # Example usage:
 rirs, source_coords = get_audio_spatial_data(aud_fmt="em32", room="METU")
 audio_tracks_paths = get_audio_tracks() 
-n_tracks = 10
+n_tracks = 50
 total_duration = 3
-polyphony = 1
+polyphony = 3
 dest_dir = f"./output_events_{polyphony}"
 os.makedirs(dest_dir, exist_ok=True)
 AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
@@ -139,8 +109,4 @@ AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_dur
 print("Synthesizing spatial audio")
 for track_num in tqdm(range(n_tracks)):
     AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
-    #AudioSynth.spatialize_single_audio_event(track_num, dest_dir)
-
-
-
 
