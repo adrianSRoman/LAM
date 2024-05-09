@@ -1,4 +1,5 @@
 import os
+import copy
 import random
 import librosa
 import soundfile as sf
@@ -29,7 +30,8 @@ DCASE_SOUND_EVENT_CLASSES = {
 }
 
 LEAVE_OUT_CLASSES = ["clapping", "telephone", "laughter", "domesticSounds", "footsteps",
-                    "doorCupboard", "music", "musicInstrument", "waterTap", "bell", "knock"]
+                    "doorCupboard", "musicInstrument",  "waterTap", "bell", "knock"]
+
 
 def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLASSES, split="train"):
     tracks_list = []
@@ -43,6 +45,7 @@ def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLAS
                 for track in tracks:
                     tracks_list.append((os.path.join(dirpath, track), DCASE_SOUND_EVENT_CLASSES[event_class]))        
     return tracks_list
+
 
 class AudioSynthesizer:
     def __init__(self, rirs, source_coords, audio_tracks_paths, total_duration):
@@ -61,12 +64,14 @@ class AudioSynthesizer:
         rir_sig, coord = self.rirs[rir_idx], self.source_coords[rir_idx]
         # get random sound event to spatialize
         event_idx = random.randrange(len(self.audio_tracks_paths))
+        # load audio and resample if neccesary
         event, class_id = self.audio_tracks_paths[event_idx]
         event_sig, sr = librosa.load(event, sr=None, mono=None)
         if sr != self.audio_FS:
             event_sig = librosa.resample(event_sig, orig_sr=sr, target_sr=self.audio_FS)
         event_sig = event_sig.reshape(-1, 1)
         event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
+        # place event within the pre-defined duration
         if event_sig.shape[0] < self.total_frames:
             temp_event = np.zeros((self.total_frames, self.num_chans))
             start_idx = random.randint(0, self.total_frames-event_sig.shape[0]) # choose a starting index within fixed duration
@@ -74,8 +79,9 @@ class AudioSynthesizer:
             event_sig = temp_event
         else:
             # may need to apply some cross fading to prevent discontinuities that can sound as "pop's"
-            #win = signal.windows.tukey(len())
-            event_sig = event_sig[:self.total_frames]
+            win = signal.windows.tukey(self.total_frames, 0.005)
+            win = np.tile(win.reshape(-1, 1), (1, 32))
+            event_sig = event_sig[:self.total_frames] * win
 
         conv_sig = np.zeros_like(event_sig)
         for ichan in range(self.num_chans):
@@ -84,18 +90,56 @@ class AudioSynthesizer:
         sf.write(os.path.join(dest_dir, f'{track_num+1:03d}_{class_id}_{round(coord[1])}_{round(coord[2])}.wav'), conv_sig, self.audio_FS)
 
 
+    def spatialize_audio_events(self, n_polyphony=1, track_num=0, dest_dir="./output"):
+        # generate a copy of the available rirs to be used
+        rirs_list, coords_list = copy.deepcopy(self.rirs), copy.deepcopy(self.source_coords)
+        # intitalize convolve audio track
+        conv_sig = np.zeros((self.total_frames, self.num_chans))
+        for _ in range(n_polyphony):
+            # get random room impulse reponse
+            rir_idx = random.randrange(len(rirs_list))
+            rir_sig, coord = rirs_list.pop(rir_idx), coords_list.pop(rir_idx) 
+            # get random sound event to spatialize
+            event_idx = random.randrange(len(self.audio_tracks_paths))
+            # load audio and resample if neccesary
+            event, class_id = self.audio_tracks_paths[event_idx]
+            event_sig, sr = librosa.load(event, sr=None, mono=None)
+            if sr != self.audio_FS:
+                event_sig = librosa.resample(event_sig, orig_sr=sr, target_sr=self.audio_FS)
+            event_sig = event_sig.reshape(-1, 1)
+            event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
+            # place event within the pre-defined duration
+            if event_sig.shape[0] < self.total_frames:
+                temp_event = np.zeros((self.total_frames, self.num_chans))
+                start_idx = random.randint(0, self.total_frames-event_sig.shape[0]) # choose a starting index within fixed duration
+                temp_event[start_idx:start_idx+event_sig.shape[0], :] = event_sig
+                event_sig = temp_event
+            else:
+                # may need to apply some cross fading to prevent discontinuities that can sound as "pop's"
+                win = signal.windows.tukey(self.total_frames, 0.005)
+                win = np.tile(win.reshape(-1, 1), (1, 32))
+                event_sig = event_sig[:self.total_frames] * win
+
+            for ichan in range(self.num_chans):
+                conv_sig[:, ichan] += np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
+        
+        sf.write(os.path.join(dest_dir, f'{track_num+1:03d}_{class_id}_{round(coord[1])}_{round(coord[2])}_{n_polyphony}.wav'), conv_sig, self.audio_FS)
+
+
 # Example usage:
 rirs, source_coords = get_audio_spatial_data(aud_fmt="em32", room="METU")
 audio_tracks_paths = get_audio_tracks() 
-n_tracks = 200
-total_duration = 2
-dest_dir = "./output"
+n_tracks = 10
+total_duration = 3
+polyphony = 1
+dest_dir = f"./output_events_{polyphony}"
 os.makedirs(dest_dir, exist_ok=True)
 AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
 
 print("Synthesizing spatial audio")
 for track_num in tqdm(range(n_tracks)):
-    AudioSynth.spatialize_single_audio_event(track_num, dest_dir)
+    AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
+    #AudioSynth.spatialize_single_audio_event(track_num, dest_dir)
 
 
 
