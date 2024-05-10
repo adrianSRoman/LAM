@@ -29,8 +29,9 @@ DCASE_SOUND_EVENT_CLASSES = {
     "knock": 12,
 }
 
-LEAVE_OUT_CLASSES = ["clapping", "telephone", "laughter", "domesticSounds", "footsteps",
+LEAVE_OUT_CLASSES = ["femaleSpeech", "maleSpeech", "clapping", "telephone", "laughter", "domesticSounds", "footsteps",
                     "doorCupboard", "musicInstrument",  "waterTap", "bell", "knock"]
+
 
 def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLASSES, split="train"):
     tracks_list = []
@@ -96,17 +97,44 @@ class AudioSynthesizer:
         sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
 
 
+    def spatialize_sinetone_events(self, n_polyphony=1, track_num=0, dest_dir="./output"):
+        # generate a copy of the available rirs to be used
+        rirs_list, coords_list = copy.deepcopy(self.rirs), copy.deepcopy(self.source_coords)
+        # intitalize convolve audio track
+        conv_sig = np.zeros((self.total_frames, self.num_chans))
+        # Define output filename: <track_num>_<polyphony>_<class_id_1>_<azi_1>_<ele_1>_<class_id_2>_<azi_2>_<ele_2>_... .wav
+        output_filename = f"{track_num+1:03d}_polyphony{n_polyphony}"
+        class_id = 440
+        for _ in range(n_polyphony):
+            # get random room impulse reponse
+            rir_idx = random.randrange(len(rirs_list))
+            rir_sig, coord = rirs_list.pop(rir_idx), coords_list.pop(rir_idx) 
+            
+            t = np.linspace(0, self.total_duration, int(self.total_frames), endpoint=False)
+            freq = random.randint(2666-166, 2666+166) # third frequency band
+            sinetone = np.sin(2 * np.pi * freq * t)
+
+            event_sig = sinetone.reshape(-1, 1)
+            event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
+
+            for ichan in range(self.num_chans):
+                conv_sig[:, ichan] += np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
+        
+            output_filename += f"_{class_id}_{round(coord[1])}_{round(coord[2])}"
+        sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
+
+
 # Example usage:
 rirs, source_coords = get_audio_spatial_data(aud_fmt="em32", room="METU")
 audio_tracks_paths = get_audio_tracks() 
 n_tracks = 50
-total_duration = 3
-polyphony = 3
-dest_dir = f"./output_events_{polyphony}"
+total_duration = 2
+polyphony = 1
+dest_dir = f"./output_sintone_{polyphony}"
 os.makedirs(dest_dir, exist_ok=True)
 AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
 
 print("Synthesizing spatial audio")
 for track_num in tqdm(range(n_tracks)):
-    AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
+    AudioSynth.spatialize_sinetone_events(polyphony, track_num, dest_dir)
 
