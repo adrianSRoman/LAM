@@ -87,3 +87,57 @@ def get_audio_spatial_data(aud_fmt="em32", room="METU"):
             rirs.append(irdata_resamp.T)
             rir_id += 1
     return rirs, source_coords
+
+
+#RIR_DB = '/mnt/ssdt7/RIR-datasets/Arni/6dof_SRIRs_eigenmike_raw/'
+#FS = 48000 # original impulse reponse sampling rate
+#NEW_FS = 24000 # new sampling rate (same as DCASE Synth)
+
+#def get_rirs_arni_dataset():
+#    # Load the .sofa file
+#    rir_db_path = RIR_DB
+#    rir_files = os.listdir(rir_db_path)
+#
+#    num_traj = len(rir_files)
+#
+#    assert num_traj != 0, f"Error: {rir_db_path} contains no .sofa files"
+#
+#    rirdata_dict = {}
+#    room = "arni"
+#    rirdata_dict[room] = {}
+#    rirdata_dict[room]['doa_xyz'] = [[] for i in range(num_traj)]
+#    rirdata_dict[room]['dist'] = [[] for i in range(num_traj)]
+#    rirdata_dict[room]['rir'] = {'mic':[[] for i in range(num_traj)]}
+#
+#    sofa_file_traj = "/scratch/ssd1/RIR_datasets/6dof_SRIRs_eigenmike_raw/6DoF_SRIRs_eigenmike_raw_100percent_absorbers_enabled.sofa"
+#
+#    sofa = SOFAFile(os.path.join(rir_db_path, sofa_file_traj),'r')
+#    if not sofa.isValid():
+#        print("Error: the file is invalid")
+#        return
+#        
+#    sourcePositions = sofa.getVariableValue('SourcePosition') # get sound source position
+#    listenerPosition = sofa.getVariableValue('ListenerPosition') # get mic position
+#    # get RIR data
+#    rirdata = sofa.getDataIR()
+#    num_meas, num_ch = rirdata.shape[0], rirdata.shape[1]
+#    meas_per_mic = 3 # equal the number of meas per trajectory
+#    num_meas = 15 # set num_meas to 15 to keep south mics only
+#    angles_mic_src = [math.degrees(compute_azimuth_elevation(lis, src)[0]) \
+#            for lis, src in zip(listenerPosition[:num_meas], sourcePositions[:num_meas])]
+#    meas_sorted_ord = np.argsort(angles_mic_src)[::-1]
+#    sorted_angles_mic_src = [angles_mic_src[i] for i in meas_sorted_ord]
+#    doa_xyz, dists, hir_data = [], [], [] # assume only one height
+#    for meas in meas_sorted_ord: # for each meas in decreasing order
+#        # add impulse response
+#        irdata = rirdata[meas, :, :]
+#        irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=NEW_FS)
+#        hir_data.append(irdata_resamp)
+#        azi, ele, dis = compute_azimuth_elevation(listenerPosition[meas], sourcePositions[meas])
+#        uvec_xyz = unit_vector(azi, ele)
+#        doa_xyz.append(uvec_xyz)
+#        dists.append(dis)
+#    rirdata_dict[room]['doa_xyz'][meas_traj].append(np.array(doa_xyz))
+#    rirdata_dict[room]['rir']['mic'][meas_traj].append(np.transpose(np.array(hir_data),(2,1,0))) # (Nsamps, Nch, N_ir)
+
+
