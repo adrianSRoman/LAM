@@ -62,27 +62,36 @@ class Trainer(BaseTrainer):
             R_field = get_field()
             ## Generated tesselation for Robinson projection
             if i <= visualize_limit:
+                fig, axes = plt.subplots(1, 2, figsize=(10, 5)) 
+                ax = axes[0] # subplot 1
                 arg_lonticks = np.linspace(-180, 180, 5)
-                fig, ax, triangulation = draw_map(latent_I, R_field,
+                fig1, ax1, triangulation1 = draw_map(latent_I, R_field,
                         lon_ticks=arg_lonticks,
                         catalog=None,
                         show_labels=True,
-                        show_axis=True)
-            
-                self.writer.add_figure(f"Acoustic Map - latent {i}", fig, epoch)
+                        show_axis=True,
+                        fig=fig,
+                        ax=ax)
+                
+                ax1.set_title("Latent Acoustic Map {}".format(i))
 
             if i <= visualize_limit:
+                ax = axes[1] # subplot 2
                 arg_lonticks = np.linspace(-180, 180, 5)
                 apgd_map = torch.abs(apgd_label[0])
                 apgd_map /= apgd_map.max()
                 apgd_map = np.tile(apgd_map, (3, 1))
-                fig, ax, triangulation = draw_map(apgd_map, R_field,
+                fig2, ax2, triangulation2 = draw_map(apgd_map, R_field,
                         lon_ticks=arg_lonticks,
                         catalog=None,
                         show_labels=True,
-                        show_axis=True)
+                        show_axis=True,
+                        fig=fig,
+                        ax=ax)
             
-                self.writer.add_figure(f"Acoustic Map (APGD) - latent {i}", fig, epoch)
+                ax2.set_title("APGD Map {}".format(i))
+
+                self.writer.add_figure("Acoustic Map {}".format(i), fig, epoch)
 
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 4)
