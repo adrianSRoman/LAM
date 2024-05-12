@@ -29,6 +29,18 @@ eigenmike_raw = {
     "31": [122, 270, 0.042], "32": [159, 271, 0.042],
 }
 
+def psnr(label, prediction):
+    # maximum possible pixel value
+    max_val = np.max(label)
+    # Mean Squared Error (MSE)
+    mse = np.mean((label - prediction) ** 2)
+    # compute peak signal to noise ratio (PSNR)
+    psnr = 10 * np.log10(max_val**2 / mse) 
+    return psnr
+
+def abs_diff(label, prediction):
+    return np.mean(np.abs(label-prediction))
+
 def _deg2rad(coords_dict):
     """
     Take a dictionary with microphone array
@@ -274,7 +286,7 @@ def cmap_from_list(name, colors, N=256, gamma=1.0):
     return matplotlib.colors.LinearSegmentedColormap(name, cdict, N, gamma)
 
 
-def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, kmeans=False):
+def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, fig=None, ax=None, kmeans=False):
     """
     Parameters
     ==========
@@ -289,7 +301,7 @@ def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, 
     R_el_min, R_el_max = np.around([np.min(R_el), np.max(R_el)])
     R_az_min, R_az_max = np.around([np.min(R_az), np.max(R_az)])
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
     bm = basemap.Basemap(projection='mill',
                          llcrnrlat=R_el_min, urcrnrlat=R_el_max,
                          llcrnrlon=R_az_min, urcrnrlon=R_az_max,
