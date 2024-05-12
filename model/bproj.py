@@ -63,8 +63,8 @@ class BackProjLayer(torch.nn.Module):
         Vs = Vs * torch.sqrt(Ds).unsqueeze(1) # element-wise multiplication between Vs and sqrt(Ds)
         latent_x = torch.matmul(self.D.conj().T, Vs)
         latent_x = torch.linalg.norm(latent_x, dim=2) ** 2 # norm operation along the second dimension and square the result
-        latent_x -= self.tau
-        #latent_x = self.retanh(latent_x) # apply sparcifier operator
+        #latent_x -= self.tau
+        #latent_x = F.relu(latent_x) # apply sparcifier operator
         expanded_A = self.A.unsqueeze(0) # expand to unit in batch dimension
         out = torch.einsum('nij,bjk,nkl->bil', expanded_A, torch.diag_embed(latent_x.cdouble()), expanded_A.transpose(1, 2).conj())
         return out, latent_x
