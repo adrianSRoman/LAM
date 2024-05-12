@@ -6,6 +6,7 @@ class Dataset(data.Dataset):
         super(Dataset, self).__init__()
         
         self.file_path = dataset
+        print("dataset filepath", dataset)
         self.freq_band = freq_band
         self.file = h5py.File(self.file_path, 'r')
         self.audio_data = self.file['em32'] # MIC audio data (nframes, nsamps, nch)
@@ -15,11 +16,12 @@ class Dataset(data.Dataset):
 
         data = self.audio_data[index]
         label = self.label_data[index]
+        dur = None # dummy variable, only used in variable length experiments 
 
         if self.freq_band is not None:
-            return data[0, :, :], label[0]
+            return data[0, :, :], label[0], dur
         else:
-            return data, label
+            return data, label, dur
 
     def __len__(self):
         return len(self.audio_data)
