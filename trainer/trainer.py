@@ -52,6 +52,7 @@ class Trainer(BaseTrainer):
         visualize_limit = self.validation_custom_config["visualize_limit"]
         loss_total = 0.0
         avg_psnr = 0.0
+        avg_diff = 0.0
         psnr_vs_dur = {}
 
         is_dur_active = False
@@ -108,10 +109,17 @@ class Trainer(BaseTrainer):
             ##############################################################################
             ##############################################################################
 
-            # Compute peak SNR between acustic maps (latent_x)
-            psnr_val = psnr(apgd_map[0], latent_I[0])
-            
+            ####################################################
+            # Compute peak SNR between acustic maps (latent_x) #
+            ####################################################
+            psnr_val = psnr(apgd_map[0], latent_I[0])            
             avg_psnr += psnr_val
+            ####################################################
+            ######## Comput mean absolute difference ###########
+            ####################################################
+            diff = abs_diff(apgd_map[0], latent_I[0])
+            avg_diff = diff
+            ####################################################
 
             # Compute peak SNR as a function of duration
             if dur_list is not None:
@@ -156,6 +164,7 @@ class Trainer(BaseTrainer):
         dl_len = len(self.validation_data_loader)
         self.writer.add_scalar(f"Validation/Loss", loss_total / dl_len, epoch)
         self.writer.add_scalar(f"Peak SNR", avg_psnr / dl_len, epoch)
+        self.writer.add_scalar(f"Abs Diff", avg_diff / dl_len, epoch)
         
         ###############################################
         ########### Make batplot for PSNR #############
