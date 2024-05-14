@@ -164,12 +164,8 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         return
     
     eigenmike_files = []
-    if "train" in dataset_name:
-        eigenmike_files = [os.path.join(data_src, file) for file in os.listdir(data_src) if file.endswith('.wav') and "._" not in file and "fold1" in file]
-    elif "test" in dataset_name:
-        eigenmike_files = [os.path.join(data_src, file) for file in os.listdir(data_src) if file.endswith('.wav') and "._" not in file and "fold2" in file]
-    else:
-        eigenmike_files = [os.path.join(data_src, file) for file in os.listdir(data_src) if file.endswith('.wav') and "._" not in file]
+        
+    eigenmike_files = [os.path.join(data_src, file) for file in os.listdir(data_src) if file.endswith('.wav') and "._" not in file]
 
     T_logs_spaced = np.logspace(np.log10(20e-3), np.log10(200e-3), 9) # logarithmically space duration from 10ms to 2sec
     T_logs_spaced = np.round(T_logs_spaced, 3) # round to three decimals
@@ -180,7 +176,6 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         apgd_labels = []
         T_sti_list = []
         for clip_name in tqdm(eigenmike_files):
-
             T_sti = random.choice(T_logs_spaced)
 
             # print("Clipname ", os.path.basename(clip_name))
@@ -227,6 +222,6 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
 save_path = "data_hdf"
 os.makedirs(save_path, exist_ok=True)
-data_src = "/scratch/data/repos/LAM/dataset/simulated/output_events_1_maxdur_2s/"
-create_full_hdf_data(dataset_name='output_poly1_log_vardur_log_10msec2sec', data_src=data_src, save_path=save_path)
+data_src = "/scratch/data/repos/LAM/dataset/simulated/eval_output_vardur_poly3_maxdur2s/"
+create_full_hdf_data(dataset_name='eval_output_vardur_poly3_maxdur2s', data_src=data_src, save_path=save_path)
 #create_full_hdf_data(dataset_name='metu_test9ch_apgd', data_src=data_src, save_path=save_path)
