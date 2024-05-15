@@ -134,7 +134,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3]):
     for i in range(nbands-1):
         if i not in bands:
             continue
-        T_sti = 10.0e-3
+        T_sti = 50.0e-3
         T_stationarity = 10 * T_sti  # Choose to have frame_rate = 10
         S = form_visibility(audio_in, fs, freq[i], bw, T_sti, T_stationarity)
         N_sample = S.shape[0]
@@ -207,8 +207,15 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         del a_np, b_np
         gc.collect()            
 
+#nbands = 10
+#freq, bw = (skutil  # Center frequencies to form images
+#        .view_as_windows(np.linspace(1500, 4500, nbands), (2,), 1)
+#        .mean(axis=-1)), 50.0  # [Hz]
+#print(freq)
+
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
-save_path = "data"
-data_src = "/scratch/data/Synth-FSD50K-DCASE-METU-ARNI-EM32-Speech-Only-short/foa_dev/mic/"
-create_full_hdf_data(dataset_name='metu_train9ch_apgd', data_src=data_src, save_path=save_path)
-create_full_hdf_data(dataset_name='metu_test9ch_apgd', data_src=data_src, save_path=save_path)
+save_path = "data_hdf"
+os.makedirs(save_path, exist_ok=True)
+data_src = "/scratch/data/repos/LAM/dataset/simulated/output_events_1/"
+create_full_hdf_data(dataset_name='output_events_50ms_1_apgd', data_src=data_src, save_path=save_path)
+#create_full_hdf_data(dataset_name='metu_test9ch_apgd', data_src=data_src, save_path=save_path)
