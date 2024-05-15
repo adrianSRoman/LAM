@@ -111,7 +111,7 @@ class AudioSynthesizer:
             rir_sig, coord = rirs_list.pop(rir_idx), coords_list.pop(rir_idx) 
             
             t = np.linspace(0, self.total_duration, int(self.total_frames), endpoint=False)
-            freq = random.randint(2666-166, 2666+166) # third frequency band
+            freq = random.randint(2666-166, 2666+166) # NOTE: third frequency band
             sinetone = np.sin(2 * np.pi * freq * t)
 
             event_sig = sinetone.reshape(-1, 1)
@@ -125,16 +125,16 @@ class AudioSynthesizer:
 
 
 # Example usage:
-rirs, source_coords = get_audio_spatial_data(aud_fmt="em32", room="METU")
+rirs, source_coords = get_audio_spatial_data(room="ARNI")
 audio_tracks_paths = get_audio_tracks() 
-n_tracks = 50
-total_duration = 2
+n_tracks = 2
+total_duration = 3
 polyphony = 1
-dest_dir = f"./output_sintone_{polyphony}"
+dest_dir = f"./test2"
 os.makedirs(dest_dir, exist_ok=True)
 AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
 
 print("Synthesizing spatial audio")
 for track_num in tqdm(range(n_tracks)):
-    AudioSynth.spatialize_sinetone_events(polyphony, track_num, dest_dir)
+    AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
 
