@@ -1,8 +1,10 @@
 import os
 import math
+import random
 import librosa
 import numpy as np
 from pysofaconventions import *
+
 
 # Reference METU outter trayectory:  bottom outter trayectory
 REF_OUT_TRAJ = ["034", "024", "014", "004", "104", "204",
@@ -13,6 +15,10 @@ REF_OUT_TRAJ = ["034", "024", "014", "004", "104", "204",
 # Reference METU inner trayectory:  bottom inner trayectory
 REF_IN_TRAJ = ["134", "124", "114", "214","314", "414", "514", "524",
                 "534", "544", "554", "454", "354", "254", "154", "145"]
+
+
+FS = 48000 # original impulse reponse sampling rate
+SYNTH_FS = 24000 # new sampling rate (same as DCASE Synth)
 
 def get_mic_xyz():
     """
@@ -56,17 +62,19 @@ def az_ele_from_source(ref_point, src_point):
     return azimuth, elevation, distance
 
 
-def compute_azimuth_elevation(receiver_pos, source_pos):
-    # Calculate the vector from the receiver to the source
-    vector = [source_pos[0] - receiver_pos[0], source_pos[1] - receiver_pos[1], source_pos[2] - receiver_pos[2]]
-    # Calculate the azimuth angle
-    azimuth = math.atan2(vector[0], vector[1])
-    # if azimuth < 0:
-    #     azimuth += math.pi
-    # Calculate the elevation angle
-    distance = math.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2)
-    elevation = math.asin(vector[2] / distance)
-    return azimuth, elevation, distance
+def center_and_translate_arni(receiver_pos, source_pos):
+    # Given two points, center the receiver coordinate at zero and tranlate the source
+    y1, x1, z1 = receiver_pos[0], receiver_pos[1], receiver_pos[2]
+    y2, x2, z2 = source_pos[0], source_pos[1], source_pos[2]
+    # compute translation of the source (loud speaker)
+    # add small perturbation to have unique coordinate for trajectory generation purposes
+    translation_y = -y1 + random.uniform(-0.0001, 0.0001)
+    translation_x = -x1 + random.uniform(-0.0001, 0.0001)
+    translation_z = z1 + random.uniform(-0.0001, 0.0001)
+    # apply tranlation, note that the receiver (mic) remains at the same height
+    receiver_centered = [0, 0, 0]
+    source_translated = [x2 + translation_x, y2 + translation_y, translation_z - z2]
+    return receiver_centered, source_translated
 
 
 def get_metu_dataset(aud_fmt="em32"):
@@ -92,21 +100,17 @@ def get_metu_dataset(aud_fmt="em32"):
             source_coords.append((rir_id, azim, elev))
             rir_name = num[0] + num[1] + str(int(num[2])-height)
             ir_path = os.path.join(metu_db_dir, rir_name, f"IR_{aud_fmt}.wav")
-            irdata, sr = librosa.load(ir_path, mono=False, sr=48000)
-            irdata_resamp = librosa.resample(irdata, orig_sr=sr, target_sr=24000)
+            irdata, sr = librosa.load(ir_path, mono=False, sr=FS)
+            irdata_resamp = librosa.resample(irdata, orig_sr=sr, target_sr=SYNTH_FS)
             irdata_resamp *= 0.3 # Normalize to ~30dBFS
             rirs.append(irdata_resamp.T)
             rir_id += 1
     return rirs, source_coords
 
 
-FS = 48000 # original impulse reponse sampling rate
-NEW_FS = 24000 # new sampling rate (same as DCASE Synth)
-
 def get_arni_dataset(aud_fmt="em32"):
     assert aud_fmt == "em32" or aud_fmt == "mic", "You must provide a valid microphone name: em32, mic"
     # Load the .sofa file
-    room = "arni"
     source_coords, rirs = [], []
     rir_db_path = "/scratch/ssd1/RIR_datasets/6dof_SRIRs_eigenmike_raw/"
     sofa_file_traj = "6DoF_SRIRs_eigenmike_raw_100percent_absorbers_enabled.sofa"
@@ -131,13 +135,16 @@ def get_arni_dataset(aud_fmt="em32"):
     for rir_id, meas in enumerate(meas_sorted_ord): # for each meas in decreasing order
         # add impulse response
         irdata = rirdata[meas, :, :]
-        irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=NEW_FS)
+        irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=SYNTH_FS)
         irdata_resamp *= 0.5 # Normalize to ~30dBFS
         hir_data.append(irdata_resamp)
-        azim, elev, dis = compute_azimuth_elevation(listenerPosition[meas], sourcePositions[meas])
+        # Compute the centered and translated positions
+        mic_centered, src_translated = center_and_translate_arni(
+            listenerPosition[meas], sourcePositions[meas]
+        )
+        azim, elev, _ = az_ele_from_source(mic_centered, src_translated)
         source_coords.append((rir_id, azim, elev))
         rirs.append(irdata_resamp.T)
-        dists.append(dis)
     return rirs, source_coords
 
 
@@ -148,4 +155,4 @@ def get_audio_spatial_data(room, aud_fmt="em32"):
         rirs, source_coords = get_arni_dataset(aud_fmt)
     else:
         raise ValueError("Unrecognized room name. Please provide either 'METU' or 'ARNI'.")
-    return rirs, source_coords 
+    return rirs, source_coords
