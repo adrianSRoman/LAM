@@ -69,12 +69,9 @@ def compute_azimuth_elevation(receiver_pos, source_pos):
     return azimuth, elevation, distance
 
 
-def get_audio_spatial_data(aud_fmt="em32", room="METU"):
+def get_metu_dataset(aud_fmt="em32"):
     assert aud_fmt == "em32" or aud_fmt == "mic", "You must provide a valid microphone name: em32, mic"
-
-    metu_db_dir = None
-    if room == "METU":
-        metu_db_dir = "/scratch/ssd1/RIR_datasets/spargair/em32/"
+    metu_db_dir = "/scratch/ssd1/RIR_datasets/spargair/em32/"
     top_height = 5
     mic_xyz = get_mic_xyz()
     source_coords, rirs = [], []
@@ -106,12 +103,11 @@ def get_audio_spatial_data(aud_fmt="em32", room="METU"):
 FS = 48000 # original impulse reponse sampling rate
 NEW_FS = 24000 # new sampling rate (same as DCASE Synth)
 
-def get_rirs_arni_dataset():
+def get_arni_dataset(aud_fmt="em32"):
+    assert aud_fmt == "em32" or aud_fmt == "mic", "You must provide a valid microphone name: em32, mic"
     # Load the .sofa file
-
     room = "arni"
     source_coords, rirs = [], []
-
     rir_db_path = "/scratch/ssd1/RIR_datasets/6dof_SRIRs_eigenmike_raw/"
     sofa_file_traj = "6DoF_SRIRs_eigenmike_raw_100percent_absorbers_enabled.sofa"
 
@@ -143,3 +139,12 @@ def get_rirs_arni_dataset():
         dists.append(dis)
     return rirs, source_coords
 
+
+def get_audio_spatial_data(room, aud_fmt="em32"):
+    if room == "METU":
+        rirs, source_coords = get_metu_dataset(aud_fmt)
+    elif room == "ARNI":
+        rirs, source_coords = get_arni_dataset(aud_fmt)
+    else:
+        raise ValueError("Unrecognized room name. Please provide either 'METU' or 'ARNI'.")
+    return rirs, source_coords 
