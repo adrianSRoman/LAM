@@ -94,7 +94,7 @@ def get_metu_dataset(aud_fmt="em32"):
             ir_path = os.path.join(metu_db_dir, rir_name, f"IR_{aud_fmt}.wav")
             irdata, sr = librosa.load(ir_path, mono=False, sr=48000)
             irdata_resamp = librosa.resample(irdata, orig_sr=sr, target_sr=24000)
-            irdata_resamp *= 0.3
+            irdata_resamp *= 0.3 # Normalize to ~30dBFS
             rirs.append(irdata_resamp.T)
             rir_id += 1
     return rirs, source_coords
@@ -132,6 +132,7 @@ def get_arni_dataset(aud_fmt="em32"):
         # add impulse response
         irdata = rirdata[meas, :, :]
         irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=NEW_FS)
+        irdata_resamp *= 0.5 # Normalize to ~30dBFS
         hir_data.append(irdata_resamp)
         azim, elev, dis = compute_azimuth_elevation(listenerPosition[meas], sourcePositions[meas])
         source_coords.append((rir_id, azim, elev))
