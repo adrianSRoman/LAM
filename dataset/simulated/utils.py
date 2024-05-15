@@ -1,15 +1,18 @@
 import os
 import math
 import librosa
+import numpy as np
+from pysofaconventions import *
 
 # Reference METU outter trayectory:  bottom outter trayectory
 REF_OUT_TRAJ = ["034", "024", "014", "004", "104", "204",
 			"304", "404", "504", "604", "614", "624",
 			"634", "644", "654", "664", "564", "464",
 			"364", "264", "164", "064", "054", "044"]
+
 # Reference METU inner trayectory:  bottom inner trayectory
 REF_IN_TRAJ = ["134", "124", "114", "214","314", "414", "514", "524",
-				"534", "544", "554", "454", "354", "254", "154", "145"]
+                "534", "544", "554", "454", "354", "254", "154", "145"]
 
 def get_mic_xyz():
     """
@@ -34,7 +37,6 @@ def az_ele_from_source_radians(ref_point, src_point):
     elevation = math.asin(dz/distance)
     return azimuth, elevation, distance
 
-
 def az_ele_from_source(ref_point, src_point):
     """
     Calculates the azimuth and elevation between a reference point and a source point in 3D space.
@@ -51,7 +53,19 @@ def az_ele_from_source(ref_point, src_point):
     azimuth = math.degrees(math.atan2(dy, dx))
     distance = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
     elevation = math.degrees(math.asin(dz / distance))
+    return azimuth, elevation, distance
 
+
+def compute_azimuth_elevation(receiver_pos, source_pos):
+    # Calculate the vector from the receiver to the source
+    vector = [source_pos[0] - receiver_pos[0], source_pos[1] - receiver_pos[1], source_pos[2] - receiver_pos[2]]
+    # Calculate the azimuth angle
+    azimuth = math.atan2(vector[0], vector[1])
+    # if azimuth < 0:
+    #     azimuth += math.pi
+    # Calculate the elevation angle
+    distance = math.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2)
+    elevation = math.asin(vector[2] / distance)
     return azimuth, elevation, distance
 
 
@@ -89,25 +103,14 @@ def get_audio_spatial_data(aud_fmt="em32", room="METU"):
     return rirs, source_coords
 
 
-RIR_DB = '/mnt/ssdt7/RIR-datasets/Arni/6dof_SRIRs_eigenmike_raw/'
 FS = 48000 # original impulse reponse sampling rate
 NEW_FS = 24000 # new sampling rate (same as DCASE Synth)
 
 def get_rirs_arni_dataset():
     # Load the .sofa file
-    rir_db_path = RIR_DB
-    rir_files = os.listdir(rir_db_path)
 
-    num_traj = len(rir_files)
-
-    assert num_traj != 0, f"Error: {rir_db_path} contains no .sofa files"
-
-    rirdata_dict = {}
     room = "arni"
-    rirdata_dict[room] = {}
-    rirdata_dict[room]['doa_xyz'] = [[] for i in range(num_traj)]
-    rirdata_dict[room]['dist'] = [[] for i in range(num_traj)]
-    rirdata_dict[room]['rir'] = {'mic':[[] for i in range(num_traj)]}
+    source_coords, rirs = [], []
 
     rir_db_path = "/scratch/ssd1/RIR_datasets/6dof_SRIRs_eigenmike_raw/"
     sofa_file_traj = "6DoF_SRIRs_eigenmike_raw_100percent_absorbers_enabled.sofa"
@@ -129,16 +132,14 @@ def get_rirs_arni_dataset():
     meas_sorted_ord = np.argsort(angles_mic_src)[::-1]
     sorted_angles_mic_src = [angles_mic_src[i] for i in meas_sorted_ord]
     doa_xyz, dists, hir_data = [], [], [] # assume only one height
-    for meas in meas_sorted_ord: # for each meas in decreasing order
+    for rir_id, meas in enumerate(meas_sorted_ord): # for each meas in decreasing order
         # add impulse response
         irdata = rirdata[meas, :, :]
         irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=NEW_FS)
         hir_data.append(irdata_resamp)
-        azi, ele, dis = compute_azimuth_elevation(listenerPosition[meas], sourcePositions[meas])
-        uvec_xyz = unit_vector(azi, ele)
-        doa_xyz.append(uvec_xyz)
+        azim, elev, dis = compute_azimuth_elevation(listenerPosition[meas], sourcePositions[meas])
+        source_coords.append((rir_id, azim, elev))
+        rirs.append(irdata_resamp.T)
         dists.append(dis)
-    rirdata_dict[room]['doa_xyz'][meas_traj].append(np.array(doa_xyz))
-    rirdata_dict[room]['rir']['mic'][meas_traj].append(np.transpose(np.array(hir_data),(2,1,0))) # (Nsamps, Nch, N_ir)
-
+    return rirs, source_coords
 
