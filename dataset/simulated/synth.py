@@ -1,7 +1,9 @@
 import os
+import yaml
 import copy
 import random
 import librosa
+import argparse
 import soundfile as sf
 import numpy as np
 from tqdm import tqdm
@@ -124,17 +126,31 @@ class AudioSynthesizer:
         sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
 
 
-# Example usage:
-rirs, source_coords = get_audio_spatial_data(room="ARNI")
-audio_tracks_paths = get_audio_tracks() 
-n_tracks = 2
-total_duration = 3
-polyphony = 1
-dest_dir = f"./test2"
-os.makedirs(dest_dir, exist_ok=True)
-AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
+if __name__ == "__main__":
+    # argument parser
+    parser = argparse.ArgumentParser(description="Spatial audio synthesizer with YAML config file.")
+    parser.add_argument("-c", "--config", required=True, help="Path to the YAML config file")
 
-print("Synthesizing spatial audio")
-for track_num in tqdm(range(n_tracks)):
-    AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
+    # parse command-line arguments
+    args = parser.parse_args()
 
+    # load parameters from the specified YAML file
+    with open(args.config, "r") as f:
+        params = yaml.safe_load(f)
+
+    # initialize destination directory to be same name as the YAML config file
+    dest_dir = os.path.splitext(os.path.basename(args.config))[0]
+    dest_dir = f"./{dest_dir}"  # assuming the output directory is in the current directory
+
+    # initialze simulation parameters
+    rirs, source_coords = get_audio_spatial_data(params["room"])
+    audio_tracks_paths = get_audio_tracks()
+    n_tracks = params["n_tracks"]
+    total_duration = params["total_duration"]
+    polyphony = params["polyphony"]
+    os.makedirs(dest_dir, exist_ok=True)
+    AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
+
+    print("Synthesizing spatial audio...")
+    for track_num in tqdm(range(n_tracks)):
+        AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
