@@ -62,6 +62,16 @@ def az_ele_from_source(ref_point, src_point):
     return azimuth, elevation, distance
 
 
+def compute_azimuth_elevation(receiver_pos, source_pos):
+    # Calculate the vector from the receiver to the source
+    vector = [source_pos[0] - receiver_pos[0], source_pos[1] - receiver_pos[1], source_pos[2] - receiver_pos[2]]
+    # Calculate the azimuth angle
+    azimuth = math.atan2(vector[0], vector[1])
+    distance = math.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2)
+    elevation = math.asin(vector[2] / distance)
+    return azimuth, elevation, distance
+
+
 def center_and_translate_arni(receiver_pos, source_pos):
     # Given two points, center the receiver coordinate at zero and tranlate the source
     y1, x1, z1 = receiver_pos[0], receiver_pos[1], receiver_pos[2]
@@ -125,12 +135,10 @@ def get_arni_dataset(aud_fmt="em32"):
     # get RIR data
     rirdata = sofa.getDataIR()
     num_meas, num_ch = rirdata.shape[0], rirdata.shape[1]
-    meas_per_mic = 3 # equal the number of meas per trajectory
     num_meas = 15 # set num_meas to 15 to keep south mics only
     angles_mic_src = [math.degrees(compute_azimuth_elevation(lis, src)[0]) \
             for lis, src in zip(listenerPosition[:num_meas], sourcePositions[:num_meas])]
     meas_sorted_ord = np.argsort(angles_mic_src)[::-1]
-    sorted_angles_mic_src = [angles_mic_src[i] for i in meas_sorted_ord]
     doa_xyz, dists, hir_data = [], [], [] # assume only one height
     for rir_id, meas in enumerate(meas_sorted_ord): # for each meas in decreasing order
         # add impulse response
