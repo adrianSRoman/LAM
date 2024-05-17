@@ -368,13 +368,12 @@ class Upsample2xBlock(torch.nn.Module):
         out = self.upsample(x)
         return out
 
-# Complex DBPN (CDBPN) network
-class CDBPN(nn.Module):
-    def __init__(self, num_channels, base_filter, feat, num_stages, scale_factor):
-        super(CDBPN, self).__init__()
-        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy")).to(device)
-        self.A.requires_grad = False
 
+# Complex DBPN (CDBPN) network
+class Net(nn.Module):
+    def __init__(self, num_channels, base_filter, feat, num_stages, scale_factor):
+        super(Net, self).__init__()
+        
         if scale_factor == 2:
         	kernel = 6
         	stride = 2
@@ -389,27 +388,21 @@ class CDBPN(nn.Module):
         	padding = 2
         
         #Initial Feature Extraction
-        self.feat0_real = ConvBlock(num_channels, feat, 3, 1, 1, activation='prelu', norm=None)
+        self.feat0_rel = ConvBlock(num_channels, feat, 3, 1, 1, activation='prelu', norm=None)
         self.feat0_imag = ConvBlock(num_channels, feat, 3, 1, 1, activation='prelu', norm=None)
-        self.feat1_real = ConvBlock(feat, base_filter, 1, 1, 0, activation='prelu', norm=None)
+        self.feat1_rel = ConvBlock(feat, base_filter, 1, 1, 0, activation='prelu', norm=None)
         self.feat1_imag = ConvBlock(feat, base_filter, 1, 1, 0, activation='prelu', norm=None)
         #Back-projection stages
-        self.up1_real = UpBlock(base_filter, kernel, stride, padding)
+        self.up1_rel = UpBlock(base_filter, kernel, stride, padding)
         self.up1_imag = UpBlock(base_filter, kernel, stride, padding)
-        self.down1_real = DownBlock(base_filter, kernel, stride, padding)
+        self.down1_rel = DownBlock(base_filter, kernel, stride, padding)
         self.down1_imag = DownBlock(base_filter, kernel, stride, padding)
-        self.up2_real = UpBlock(base_filter, kernel, stride, padding)
+        self.up2_rel = UpBlock(base_filter, kernel, stride, padding)
         self.up2_imag = UpBlock(base_filter, kernel, stride, padding)
         #Reconstruction
-        self.output_conv_real = ConvBlock(num_stages*base_filter // 5, num_channels, 3, 1, 1, activation=None, norm=None)
+        self.output_conv_rel = ConvBlock(num_stages*base_filter // 5, num_channels, 3, 1, 1, activation=None, norm=None)
         self.output_conv_imag = ConvBlock(num_stages*base_filter // 5, num_channels, 3, 1, 1, activation=None, norm=None)
-        #Linear projection into latent acoustic vector x
-        self.dense_real_1 = DenseBlock(4096, 1024)
-        self.dense_real_2 = DenseBlock(1024, 370) 
-        self.dense_imag_1 = DenseBlock(4096, 1024)
-        self.dense_imag_2 = DenseBlock(1024, 370)
-        self.dense_out = DenseBlock(2*370, 370)
-
+        
         for m in self.modules():
             classname = m.__class__.__name__
             if classname.find('Conv2d') != -1:
@@ -422,50 +415,21 @@ class CDBPN(nn.Module):
                 if m.bias is not None:
                     m.bias.data = m.bias.data.double() 
             
-    def forward(self, x):
-        identity = x.squeeze(1) # prepare skip connection
-        #print(identity.shape)
-        x_real, x_imag = torch.real(x), torch.imag(x)
+    def forward(self, x_rel, x_imag):
         #real
-        x_real = self.feat0_real(x_real)
-        x_real = self.feat1_real(x_real)
+        x_rel = self.feat0_rel(x_rel)
+        x_rel = self.feat1_rel(x_rel)
         #imag
         x_imag = self.feat0_imag(x_imag)
         x_imag = self.feat1_imag(x_imag)
         #real
-        h1_real = self.up1_real(x_real)
-        h2_real = self.up2_real(self.down1_real(h1_real))
+        h1_rel = self.up1_rel(x_rel)
+        h2_rel = self.up2_rel(self.down1_rel(h1_rel))
         #imag
         h1_imag = self.up1_imag(x_imag)
         h2_imag = self.up2_imag(self.down1_imag(h1_imag))
         #real
-        x_real = self.output_conv_real(torch.cat((h2_real, h1_real),1))
+        x_rel = self.output_conv_rel(torch.cat((h2_rel, h1_rel),1))
         #imag
         x_imag = self.output_conv_imag(torch.cat((h2_imag, h1_imag),1))
-        # Dense layer projection
-        batch_size = x_real.size(0)
-        #real
-        x_real = x_real.view(batch_size, -1)
-        x_real = self.dense_real_1(x_real)
-        x_real = self.dense_real_2(x_real)
-        #imag
-        x_imag = x_imag.view(batch_size, -1)
-        x_imag = self.dense_real_1(x_imag)
-        x_imag = self.dense_real_2(x_imag)
-        #real-imag
-        out_reim = torch.cat((x_real, x_imag), dim=-1)
-        latent_x = self.dense_out(out_reim)
-        latent_x = latent_x.type(torch.complex64)
-        #project x_lantent with steering matrix A
-        x = torch.diag_embed(latent_x).to(torch.complex128)
-        x = torch.matmul(x, self.A.conj().transpose(0, 1))
-        out = torch.matmul(self.A, x) 
-        #print("out shape", out.shape)
-        out += identity
-        
-        return out, latent_x
-
-#from torchsummary import summary
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#model = CDBPN(num_channels=1, base_filter=32,  feat = 128, num_stages=10, scale_factor=2).to(device).float()
-#summary(model, (1, 32, 32))
+        return torch.complex(x_rel, x_imag)
