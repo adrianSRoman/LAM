@@ -56,15 +56,19 @@ class BackProjLayer(torch.nn.Module):
         """
         S = S.squeeze(1)
         batch_size, N_ch = S.shape[:2]
-        N_px = self.tau.shape[0]
-        Ds, Vs = torch.linalg.eigh(S)  # (batch_size, N_ch, N_ch), (batch_size, N_ch, N_ch)
-        idx = Ds > 0  # To avoid np.sqrt() issues.
-        Ds = torch.where(idx, Ds, torch.zeros_like(Ds)) # apply mask to Ds
-        Vs = Vs * torch.sqrt(Ds).unsqueeze(1) # element-wise multiplication between Vs and sqrt(Ds)
-        latent_x = torch.matmul(self.D.conj().T, Vs)
-        latent_x = torch.linalg.norm(latent_x, dim=2) ** 2 # norm operation along the second dimension and square the result
-        #latent_x -= self.tau
-        #latent_x = F.relu(latent_x) # apply sparcifier operator
-        expanded_A = self.A.unsqueeze(0) # expand to unit in batch dimension
-        out = torch.einsum('nij,bjk,nkl->bil', expanded_A, torch.diag_embed(latent_x.cdouble()), expanded_A.transpose(1, 2).conj())
+        if N_ch == 32: # No CDBPN upsampling needed
+            N_px = self.tau.shape[0]
+            Ds, Vs = torch.linalg.eigh(S)  # (batch_size, N_ch, N_ch), (batch_size, N_ch, N_ch)
+            idx = Ds > 0  # To avoid np.sqrt() issues.
+            Ds = torch.where(idx, Ds, torch.zeros_like(Ds)) # apply mask to Ds
+            Vs = Vs * torch.sqrt(Ds).unsqueeze(1) # element-wise multiplication between Vs and sqrt(Ds)
+            latent_x = torch.matmul(self.D.conj().T, Vs)
+            latent_x = torch.linalg.norm(latent_x, dim=2) ** 2 # norm operation along the second dimension and square the result
+            #latent_x -= self.tau
+            #latent_x = F.relu(latent_x) # apply sparcifier operator
+            expanded_A = self.A.unsqueeze(0) # expand to unit in batch dimension
+            out = torch.einsum('nij,bjk,nkl->bil', expanded_A, torch.diag_embed(latent_x.cdouble()), expanded_A.transpose(1, 2).conj())
+        else: # if N_ch == 4
+            # perform CDBPN upsampling here
+            pass
         return out, latent_x
