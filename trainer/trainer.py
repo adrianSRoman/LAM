@@ -34,8 +34,6 @@ class Trainer(BaseTrainer):
             S_in = S_in.unsqueeze(1)
             S_out,_ = self.model(S_in)
             S_out = S_out.unsqueeze(1)
-            #S_in_re_im = torch.cat((torch.real(S_in), torch.imag(S_in)), dim=1)
-            #S_out_re_im = torch.cat((torch.real(S_out), torch.imag(S_out)), dim=1)
 
             loss = self.loss_function(S_out, S_in) #S_in_re_im, S_out_re_im)
             self.optimizer.zero_grad()
