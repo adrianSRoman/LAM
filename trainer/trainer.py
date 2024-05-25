@@ -26,19 +26,26 @@ class Trainer(BaseTrainer):
         super(Trainer, self).__init__(config, resume, model, loss_function, optimizer)
         self.train_data_loader = train_dataloader
         self.validation_data_loader = validation_dataloader
+        self.upsample = upsample
 
     def _train_epoch(self, epoch):
         loss_total = 0.0
         
         for i, (S_em32, S_mic, _, _) in enumerate(self.train_data_loader):
-            if upsample:
-                pass # NOTE: here we need to call CDBPN upsampling
-            S_em32 = S_em32.to(self.device)
-            S_em32 = S_em32.unsqueeze(1)
-            S_out,_ = self.model(S_em32)
+            if self.upsample:
+                # call 4 channel model (CDBPN->Bproj)
+                S_mic = S_mic.to(self.device)
+                S_mic = S_mic.unsqueeze(1)
+                S_out,_ = self.model(S_mic)
+            else:
+                # call 32 channel model (Bproj)
+                S_em32 = S_em32.to(self.device)
+                S_em32 = S_em32.unsqueeze(1)
+                S_out,_ = self.model(S_em32)
+            
             S_out = S_out.unsqueeze(1)
 
-            loss = self.loss_function(S_out, S_em32) #S_em32_re_im, S_out_re_im)
+            loss = self.loss_function(S_out, S_em32) # compare prediction with 32 channel visibility matrix
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -59,11 +66,16 @@ class Trainer(BaseTrainer):
         is_dur_active = False
 
         for i, (S_em32, S_mic, apgd_label, dur_list) in enumerate(self.validation_data_loader):
-            if upsample:
-                pass # NOTE: here we need to call CDBPN upsampling
-            S_em32 = S_em32.to(self.device)
-            S_em32 = S_em32.unsqueeze(1)
-            S_out, latent_x = self.model(S_em32)
+            if self.upsample:
+                # call 4 channel model (CDBPN->Bproj)
+                S_mic = S_mic.to(self.device)
+                S_mic = S_mic.unsqueeze(1)
+                S_out, latent_x = self.model(S_mic)
+            else:
+                # call 32 channel model (Bproj)
+                S_em32 = S_em32.to(self.device)
+                S_em32 = S_em32.unsqueeze(1)
+                S_out, latent_x = self.model(S_em32)
             loss = self.loss_function(S_out.unsqueeze(1), S_em32)
             loss_total += loss.item()
             latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
