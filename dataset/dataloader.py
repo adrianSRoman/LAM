@@ -16,14 +16,15 @@ class Dataset(data.Dataset):
 
     def __getitem__(self, index):
 
-        em3 = self.em32_matrix[index]
+        em32 = self.em32_matrix[index]
+        mic = self.mic_matrix[index]
         label = self.label_data[index]
         dur = self.dur_data[index]
 
         if self.freq_band is not None:
-            return data[0, :, :], label[0], dur[0]
+            return em32[0,:,:], mic[0,:,:], label[0], dur[0]
         else:
-            return data, label, dur
+            return em32, mic, label, dur
 
     def __len__(self):
         return len(self.em32_matrix)
