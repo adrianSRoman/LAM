@@ -21,6 +21,7 @@ class Trainer(BaseTrainer):
             optimizer,
             train_dataloader,
             validation_dataloader,
+            upsample = False,
     ):
         super(Trainer, self).__init__(config, resume, model, loss_function, optimizer)
         self.train_data_loader = train_dataloader
@@ -29,13 +30,15 @@ class Trainer(BaseTrainer):
     def _train_epoch(self, epoch):
         loss_total = 0.0
         
-        for i, (S_in, _, _) in enumerate(self.train_data_loader):
-            S_in = S_in.to(self.device)
-            S_in = S_in.unsqueeze(1)
-            S_out,_ = self.model(S_in)
+        for i, (S_em32, S_mic, _, _) in enumerate(self.train_data_loader):
+            if upsample:
+                pass # NOTE: here we need to call CDBPN upsampling
+            S_em32 = S_em32.to(self.device)
+            S_em32 = S_em32.unsqueeze(1)
+            S_out,_ = self.model(S_em32)
             S_out = S_out.unsqueeze(1)
 
-            loss = self.loss_function(S_out, S_in) #S_in_re_im, S_out_re_im)
+            loss = self.loss_function(S_out, S_em32) #S_em32_re_im, S_out_re_im)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -55,11 +58,13 @@ class Trainer(BaseTrainer):
 
         is_dur_active = False
 
-        for i, (S_in, apgd_label, dur_list) in enumerate(self.validation_data_loader):
-            S_in = S_in.to(self.device)
-            S_in = S_in.unsqueeze(1)
-            S_out, latent_x = self.model(S_in)
-            loss = self.loss_function(S_out.unsqueeze(1), S_in)
+        for i, (S_em32, S_mic, apgd_label, dur_list) in enumerate(self.validation_data_loader):
+            if upsample:
+                pass # NOTE: here we need to call CDBPN upsampling
+            S_em32 = S_em32.to(self.device)
+            S_em32 = S_em32.unsqueeze(1)
+            S_out, latent_x = self.model(S_em32)
+            loss = self.loss_function(S_out.unsqueeze(1), S_em32)
             loss_total += loss.item()
             latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
             latent_I /= latent_I.max()
@@ -139,7 +144,7 @@ class Trainer(BaseTrainer):
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 4)
                 mat_out = S_out.detach().cpu().numpy()
-                mat_in = S_in.squeeze(1).detach().cpu().numpy()
+                mat_in = S_em32.squeeze(1).detach().cpu().numpy()
                 min_val = min(np.abs(mat_out.min().item()), np.abs(mat_in.min().item()))
                 max_val = max(np.abs(mat_out.max().item()), np.abs(mat_in.max().item()))
                 for j, y in enumerate([mat_in, mat_out, mat_in, mat_out]):
