@@ -7,6 +7,7 @@
         "module": "trainer.trainer",
         "main": "Trainer",
         "epochs": 300,
+	"upsample": true,
         "save_checkpoint_interval": 10,
         "validation": {
 		"interval": 3,
