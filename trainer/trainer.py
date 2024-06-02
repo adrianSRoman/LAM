@@ -26,7 +26,6 @@ class Trainer(BaseTrainer):
         super(Trainer, self).__init__(config, resume, model, loss_function, optimizer)
         self.train_data_loader = train_dataloader
         self.validation_data_loader = validation_dataloader
-        self.upsample = upsample
 
     def _train_epoch(self, epoch):
         loss_total = 0.0
