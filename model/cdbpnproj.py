@@ -7,7 +7,7 @@ from bproj import BackProjLayer
 from cdbpn import Net as CDBPN
 
 class CDBPNProj(nn.Module):
-    def __init__(self, num_channels=9, base_filter=32, feat = 128, num_stages=10, scale_factor=8):
+    def __init__(self, num_channels=9, base_filter=32, feat=128, num_stages=10, scale_factor=8):
         super(CDBPNProj, self).__init__()
         self.cdbpn = CDBPN(num_channels, base_filter,  feat, num_stages, scale_factor=upscale_factor)
         self.bproj = BackProjLayer()
