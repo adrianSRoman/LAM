@@ -71,9 +71,11 @@ class Trainer(BaseTrainer):
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
                 S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
+                S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             loss = self.loss_function(S_out.unsqueeze(1), S_hr)
