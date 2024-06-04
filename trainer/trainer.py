@@ -21,6 +21,7 @@ class Trainer(BaseTrainer):
             optimizer,
             train_dataloader,
             validation_dataloader,
+            upsample = False,
     ):
         super(Trainer, self).__init__(config, resume, model, loss_function, optimizer)
         self.train_data_loader = train_dataloader
@@ -29,13 +30,22 @@ class Trainer(BaseTrainer):
     def _train_epoch(self, epoch):
         loss_total = 0.0
         
-        for i, (S_in, _, _) in enumerate(self.train_data_loader):
-            S_in = S_in.to(self.device)
-            S_in = S_in.unsqueeze(1)
-            S_out,_ = self.model(S_in)
+        for i, (S_hr, S_lr, _, _) in enumerate(self.train_data_loader):
+            S_lr = S_lr.to(self.device)
+            S_hr = S_hr.to(self.device)
+            if self.upsample:
+                # call model w/ upsampling (CDBPN->Bproj)
+                S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
+                S_out,_ = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
+            else:
+                # call model w/o upsampling (Bproj)
+                S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
+                S_out,_ = self.model(S_hr) # pass high-resolution matrix (32ch)
+            
             S_out = S_out.unsqueeze(1)
-
-            loss = self.loss_function(S_out, S_in) #S_in_re_im, S_out_re_im)
+            loss = self.loss_function(S_out, S_hr) # compare prediction with 32 channel visibility matrix
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -55,11 +65,20 @@ class Trainer(BaseTrainer):
 
         is_dur_active = False
 
-        for i, (S_in, apgd_label, dur_list) in enumerate(self.validation_data_loader):
-            S_in = S_in.to(self.device)
-            S_in = S_in.unsqueeze(1)
-            S_out, latent_x = self.model(S_in)
-            loss = self.loss_function(S_out.unsqueeze(1), S_in)
+        for i, (S_hr, S_lr, apgd_label, dur_list) in enumerate(self.validation_data_loader):
+            S_lr = S_lr.to(self.device)
+            S_hr = S_hr.to(self.device)
+            if self.upsample:
+                # call model w/ upsampling (CDBPN->Bproj)
+                S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
+                S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
+            else:
+                # call model w/o upsampling (Bproj)
+                S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
+                S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
+            loss = self.loss_function(S_out.unsqueeze(1), S_hr)
             loss_total += loss.item()
             latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
             latent_I /= latent_I.max()
@@ -94,8 +113,7 @@ class Trainer(BaseTrainer):
                         show_axis=True,
                         fig=fig,
                         ax=ax)
-            
-                
+                            
                 gt = apgd_map[0]
                 pred = latent_I[0]
                 ssim_gt = ssim(gt, gt, data_range=gt.max() - gt.min())
@@ -139,7 +157,7 @@ class Trainer(BaseTrainer):
             if i <= visualize_limit:
                 fig, ax = plt.subplots(1, 4)
                 mat_out = S_out.detach().cpu().numpy()
-                mat_in = S_in.squeeze(1).detach().cpu().numpy()
+                mat_in = S_hr.squeeze(1).detach().cpu().numpy()
                 min_val = min(np.abs(mat_out.min().item()), np.abs(mat_in.min().item()))
                 max_val = max(np.abs(mat_out.max().item()), np.abs(mat_in.max().item()))
                 for j, y in enumerate([mat_in, mat_out, mat_in, mat_out]):

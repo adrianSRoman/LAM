@@ -9,19 +9,22 @@ class Dataset(data.Dataset):
         print("dataset filepath", dataset)
         self.freq_band = freq_band
         self.file = h5py.File(self.file_path, 'r')
-        self.audio_data = self.file['em32'] # MIC audio data (nframes, nsamps, nch)
-        self.label_data = self.file['apgd'] # visibility graph matrices (nframes, nbands, nch, nch)
+        self.em32_matrix = self.file['em32']    # eigenmike32 visibility matrix (nframes, nbands, nch nch)
+        self.mic_matrix = self.file['mic']      # tetra mic visibility matrix (nframs, nbands, nch nch)
+        self.label_data = self.file['apgd']     # visibility graph matrices (nframes, nbands, Npx)
+        self.dur_data = self.file['dur']        # audio frame duration
 
     def __getitem__(self, index):
 
-        data = self.audio_data[index]
+        em32 = self.em32_matrix[index]
+        mic = self.mic_matrix[index]
         label = self.label_data[index]
-        dur = None # dummy variable, only used in variable length experiments 
+        dur = self.dur_data[index]
 
         if self.freq_band is not None:
-            return data[0, :, :], label[0], dur
+            return em32[0,:,:], mic[0,:,:], label[0], dur[0]
         else:
-            return data, label, dur
+            return em32, mic, label, dur
 
     def __len__(self):
-        return len(self.audio_data)
+        return len(self.em32_matrix)

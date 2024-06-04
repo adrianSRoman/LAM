@@ -39,6 +39,7 @@ class BaseTrainer:
         self.validation_interval = self.validation_config["interval"]
         self.find_max = self.validation_config["find_max"]
         self.validation_custom_config = self.validation_config["custom"]
+        self.upsample = config["trainer"]["upsample"]
 
         # The following args is not in the config file. We will update it if the resume is True in later.
         self.start_epoch = 1
