@@ -13,7 +13,6 @@ from torchvision.transforms import *
 import torch
 import math
 
-device = 'cuda:0'
 
 class DenseBlock(torch.nn.Module):
     def __init__(self, input_size, output_size, bias=True, activation='relu', norm='batch'):

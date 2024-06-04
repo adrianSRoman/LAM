@@ -31,19 +31,20 @@ class Trainer(BaseTrainer):
         loss_total = 0.0
         
         for i, (S_hr, S_lr, _, _) in enumerate(self.train_data_loader):
+            S_lr = S_lr.to(self.device)
+            S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                S_lr = S_lr.to(self.device)
                 S_lr = S_lr.unsqueeze(1)
+                S_hr = S_hr.unsqueeze(1)
                 S_out,_ = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                S_hr = S_hr.to(self.device)
+                S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
                 S_out,_ = self.model(S_hr) # pass high-resolution matrix (32ch)
             
             S_out = S_out.unsqueeze(1)
-
             loss = self.loss_function(S_out, S_hr) # compare prediction with 32 channel visibility matrix
             self.optimizer.zero_grad()
             loss.backward()
@@ -65,14 +66,14 @@ class Trainer(BaseTrainer):
         is_dur_active = False
 
         for i, (S_hr, S_lr, apgd_label, dur_list) in enumerate(self.validation_data_loader):
+            S_lr = S_lr.to(self.device)
+            S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                S_lr = S_lr.to(self.device)
                 S_lr = S_lr.unsqueeze(1)
                 S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                S_hr = S_hr.to(self.device)
                 S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             loss = self.loss_function(S_out.unsqueeze(1), S_hr)
