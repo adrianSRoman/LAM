@@ -16,3 +16,5 @@ class CDBPNProj(nn.Module):
         S_pred = self.cdbpn(S.real, S.imag)      # perform upsampling
         out, x = self.bproj(S_pred) # get prediction and latent
         return out, x
+
+

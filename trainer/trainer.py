@@ -78,6 +78,7 @@ class Trainer(BaseTrainer):
                 S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
+            
             loss = self.loss_function(S_out.unsqueeze(1), S_hr)
             loss_total += loss.item()
             latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
