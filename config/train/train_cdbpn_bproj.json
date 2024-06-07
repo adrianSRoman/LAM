@@ -52,8 +52,8 @@
         }
     },
     "train_dataloader": {
-        "batch_size": 8,
-        "num_workers": 20,
+        "batch_size": 64,
+        "num_workers": 40,
         "shuffle": true,
         "pin_memory": true
     }
