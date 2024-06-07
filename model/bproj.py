@@ -30,7 +30,7 @@ class BackProjLayer(torch.nn.Module):
             Npx (int): number of pixels in Robinson projection
         """
         super().__init__()
-        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy")).to(device)
+        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy"))
         self.A.requires_grad = False
         if tau is None or D is None:
             self.tau = torch.nn.Parameter(torch.empty((Npx), dtype=torch.float64))
@@ -54,6 +54,8 @@ class BackProjLayer(torch.nn.Module):
         Returns:
             :obj:`torch.Tensor`: output: (batch_size, N_px)
         """
+        device = S.device # get the device where the computation is being performed
+        self.A = self.A.to(device) # Move A to the appropriate device
         S = S.squeeze(1)
         batch_size, N_ch = S.shape[:2]
         N_px = self.tau.shape[0]
