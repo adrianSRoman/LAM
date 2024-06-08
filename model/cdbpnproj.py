@@ -3,8 +3,8 @@ import numpy as np
 from torch import nn
 import torch.nn.functional as F
 
-from bproj import BackProjLayer
-from cdbpn import Net as CDBPN
+from model.bproj import BackProjLayer
+from model.cdbpn import Net as CDBPN
 
 class CDBPNProj(nn.Module):
     def __init__(self, num_channels=1, base_filter=32, feat=128, num_stages=10, scale_factor=8):
