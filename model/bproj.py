@@ -23,14 +23,14 @@ class BackProjLayer(torch.nn.Module):
     """Spherical Convolutional Neural Netork.
     """
 
-    def __init__(self, Nch=32, Npx=370, tau=None, D=None):
+    def __init__(self, Nch=32, Npx=484, tau=None, D=None):
         """Initialization.
         Args:
             Nch (int): number of channels in mic array
             Npx (int): number of pixels in Robinson projection
         """
         super().__init__()
-        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy"))
+        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/dataset/gen_dataset/steering1.npy")) #"/scratch/data/repos/LAM/util/steering.npy"))
         self.A.requires_grad = False
         if tau is None or D is None:
             self.tau = torch.nn.Parameter(torch.empty((Npx), dtype=torch.float64))

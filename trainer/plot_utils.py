@@ -164,7 +164,7 @@ def fibonacci(N, direction=None, FoV=None):
     return XYZ
 
 
-def get_field(min_freq=1500, max_freq=1500,nbands=10):
+def get_field(min_freq=1500, max_freq=4500,nbands=10):
     freq, bw = (skutil  # Center frequencies to form images
             .view_as_windows(np.linspace(min_freq, max_freq, 10), (2,), 1)
             .mean(axis=-1)), 50.0  # [Hz]
@@ -175,7 +175,7 @@ def get_field(min_freq=1500, max_freq=1500,nbands=10):
     sh_order = nyquist_rate(dev_xyz, wl_min) # Maximum order of complex plane waves that can be imaged by the instrument.
     sh_order=10
     R = fibonacci(sh_order)
-    R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(50))
+    R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(90)) #50))
     R = R[:, R_mask]  # Shrink visible view to avoid border effects.
     return R
 
