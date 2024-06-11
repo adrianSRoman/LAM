@@ -124,7 +124,6 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3], T_sti=10e-3):
     xyz = get_xyz()
     dev_xyz = np.array(xyz).T
     A = steering_operator(dev_xyz, R)
-    np.save("steering1.npy", A)
     N_px = A.shape[1]
     
     visibilities = []
