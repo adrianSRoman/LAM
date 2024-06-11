@@ -10,6 +10,7 @@ import numpy as np
 import scipy
 from scipy.io import wavfile
 
+from util.utils import get_field, get_xyz, steering_operator
 from apgd import *
 
 import scipy.constants as constants
@@ -20,9 +21,6 @@ import skimage.util as skutil
 import scipy.sparse as sp
 import scipy.sparse.linalg as splinalg
 import scipy.spatial as spatial
-
-import librosa
-
 
 def extract_visibilities(_data, _rate, T, fc, bw, alpha):
     """
@@ -122,11 +120,12 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3], T_sti=10e-3):
         .view_as_windows(np.linspace(1500, 4500, nbands), (2,), 1)
         .mean(axis=-1)), 50.0  # [Hz]
 
-    # freq, bw = librosa.mel_frequencies(n_mels=nbands-1, fmin=50, fmax=4500), 50
-    A = np.load("/scratch/data/repos/LAM/util/steering.npy")
-    print("steering matrix shape", A.shape)
+    R = get_field()
+    xyz = get_xyz()
+    dev_xyz = np.array(xyz).T
+    A = steering_operator(dev_xyz, R)
     N_px = A.shape[1]
-    print("shape of pixes", N_px)
+    
     visibilities = []
     apgd_map = []
     for i in range(nbands-1):
@@ -222,6 +221,5 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
 save_path = "data_hdf"
 os.makedirs(save_path, exist_ok=True)
-data_src = "/scratch/data/repos/LAM/dataset/simulated/eval_output_vardur_poly3_maxdur2s/"
-create_full_hdf_data(dataset_name='eval_output_vardur_poly3_maxdur2s', data_src=data_src, save_path=save_path)
-#create_full_hdf_data(dataset_name='metu_test9ch_apgd', data_src=data_src, save_path=save_path)
+data_src = "/scratch/data/repos/LAM/dataset/simulated/eval_output_vardur_poly1_maxdur2s"
+create_full_hdf_data(dataset_name='eval_output_vardur_poly1_maxdur2s', data_src=data_src, save_path=save_path)

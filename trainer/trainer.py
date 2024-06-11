@@ -6,7 +6,7 @@ import torch
 
 from skimage.metrics import structural_similarity as ssim
 
-from trainer.plot_utils import *
+from trainer.utils import *
 
 from trainer.base_trainer import BaseTrainer
 plt.switch_backend('agg')

@@ -164,7 +164,7 @@ def fibonacci(N, direction=None, FoV=None):
     return XYZ
 
 
-def get_field(min_freq=1500, max_freq=1500,nbands=10):
+def get_field(min_freq=1500, max_freq=4500,nbands=10):
     freq, bw = (skutil  # Center frequencies to form images
             .view_as_windows(np.linspace(min_freq, max_freq, 10), (2,), 1)
             .mean(axis=-1)), 50.0  # [Hz]
@@ -172,19 +172,108 @@ def get_field(min_freq=1500, max_freq=1500,nbands=10):
     xyz = get_xyz()
     dev_xyz = np.array(xyz).T
     wl_min = constants.speed_of_sound / (freq.max() + 500)
-    sh_order = nyquist_rate(dev_xyz, wl_min) # Maximum order of complex plane waves that can be imaged by the instrument.
+    #sh_order = nyquist_rate(dev_xyz, wl_min) # Maximum order of complex plane waves that can be imaged by the instrument.
     sh_order=10
     R = fibonacci(sh_order)
-    R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(50))
+    R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(90)) #50))
     R = R[:, R_mask]  # Shrink visible view to avoid border effects.
     return R
 
 
+def steering_operator():
+    r"""
+    Steering matrix.
+
+    Parameters
+    ----------
+    XYZ : :py:class:`~numpy.ndarray`
+        (3, N_antenna) Cartesian array geometry.
+    R : :py:class:`~numpy.ndarray`
+        (3, N_px) Cartesian grid points in :math:`\mathbb{S}^{2}`.
+
+    Returns
+    -------
+    A : :py:class:`~numpy.ndarray`
+        (N_antenna, N_px) steering matrix.
+
+    Notes
+    -----
+    The steering matrix is defined as:
+
+    .. math:: {\bf{A}} = \exp \left( -j \frac{2 \pi}{\lambda} {\bf{P}}^{T} {\bf{R}} \right),
+
+    where :math:`{\bf{P}} \in \mathbb{R}^{3 \times N_{\text{antenna}}}` and
+    :math:`{\bf{R}} \in \mathbb{R}^{3 \times N_{\text{px}}}`.
+    """
+    xyz = get_xyz()
+    XYZ = np.array(xyz).T
+    R = get_field()
+    freq, bw = (skutil  # Center frequencies to form images
+            .view_as_windows(np.linspace(1500, 4500, 10), (2,), 1)
+            .mean(axis=-1)), 50.0  # [Hz]
+    wl = constants.speed_of_sound / (freq.max() + 500)
+    if wl <= 0:
+        raise ValueError("Parameter[wl] must be positive.")
+
+    scale = 2 * np.pi / wl
+    A = np.exp((-1j * scale * XYZ.T) @ R)
+    return A
+
+def spherical_jn_series_threshold(x, table_lookup=True, epsilon=1e-2):
+    if not (0 < epsilon < 1):
+        raise ValueError("Parameter[epsilon] must lie in (0, 1).")
+
+    if table_lookup is True:
+        rel_path = pathlib.Path("data", "math", "special", "spherical_jn_series_threshold.csv")
+        abs_path = pkg.resource_filename("imot_tools", str(rel_path))
+
+        data = pd.read_csv(abs_path).sort_values(by="x")
+        x = np.abs(x)
+        idx = int(np.digitize(x, bins=data["x"].values))
+        if idx == 0:  # Below smallest known x.
+            n = data["n_threshold"].iloc[0]
+        else:
+            if idx == len(data):  # Above largest known x.
+                ratio = data["n_threshold"].iloc[-1] / data["x"].iloc[-1]
+            else:
+                ratio = data["n_threshold"].iloc[idx - 1] / data["x"].iloc[idx - 1]
+            n = int(np.ceil(ratio * x))
+
+        return n
+    else:
+
+        def series(n, x):
+            q = np.arange(n)
+            _2q1 = 2 * q + 1
+            _sph = special.spherical_jn(q, x) ** 2
+
+            return np.sum(_2q1 * _sph)
+
+        n_opt = int(0.95 * x)
+        while True:
+            n_opt += 1
+            if 1 - series(n_opt, x) < epsilon:
+                return n_opt
+
 def nyquist_rate(XYZ, wl):
+    """
+    Order of imageable complex plane-waves by an instrument.
+
+    Parameters
+    ----------
+    XYZ : :py:class:`~numpy.ndarray`
+        (3, N_antenna) Cartesian array geometry.
+    wl : float
+        Wavelength [m]
+
+    Returns
+    -------
+    N : int
+        Maximum order of complex plane waves that can be imaged by the instrument.
+    """
     baseline = linalg.norm(XYZ[:, np.newaxis, :] - XYZ[:, :, np.newaxis], axis=0)
     N = spherical_jn_series_threshold((2 * np.pi / wl) * baseline.max())
     return N
-
 
 def wrapped_rad2deg(lat_r, lon_r):
     """

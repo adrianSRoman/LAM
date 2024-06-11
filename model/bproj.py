@@ -4,8 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 
 import math
-
-device = 'cuda:0'
+from trainer.utils import steering_operator
 
 class ReTanh(torch.nn.Module):
     '''
@@ -23,15 +22,16 @@ class BackProjLayer(torch.nn.Module):
     """Spherical Convolutional Neural Netork.
     """
 
-    def __init__(self, Nch=32, Npx=370, tau=None, D=None):
+    def __init__(self, Nch=32, tau=None, D=None):
         """Initialization.
         Args:
             Nch (int): number of channels in mic array
             Npx (int): number of pixels in Robinson projection
         """
         super().__init__()
-        self.A = torch.from_numpy(np.load("/scratch/data/repos/LAM/util/steering.npy"))
+        self.A = torch.from_numpy(steering_operator())
         self.A.requires_grad = False
+        Npx = self.A.shape[-1] # get number of pixes in tesselation
         if tau is None or D is None:
             self.tau = torch.nn.Parameter(torch.empty((Npx), dtype=torch.float64))
             self.D = torch.nn.Parameter(torch.empty((Nch, Npx), dtype=torch.complex128))
