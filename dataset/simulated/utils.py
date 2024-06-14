@@ -93,11 +93,10 @@ def get_metu_dataset(aud_fmt="em32"):
     top_height = 5
     mic_xyz = get_mic_xyz()
     source_coords, rirs = [], []
-
     rir_id = 0
     # Outter trayectory: bottom to top
     for height in range(0, top_height):
-        for num in REF_OUT_TRAJ:
+        for num in REF_OUT_TRAJ[-2:]:
             # Coords computed based on documentation.pdf from METU Sparg
             x = (3 - int(num[0])) * 0.5
             y = (3 - int(num[1])) * 0.5
@@ -115,6 +114,7 @@ def get_metu_dataset(aud_fmt="em32"):
             irdata_resamp *= 0.3 # Normalize to ~30dBFS
             rirs.append(irdata_resamp.T)
             rir_id += 1
+    #print("returned")
     return rirs, source_coords
 
 

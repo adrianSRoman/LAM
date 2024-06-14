@@ -48,6 +48,8 @@ def get_audio_tracks(dataset_path=DCASE_EVENTS, leave_out_classes=LEAVE_OUT_CLAS
                     tracks_list.append((os.path.join(dirpath, track), DCASE_SOUND_EVENT_CLASSES[event_class]))        
     return tracks_list
 
+def convert_decibels_to_amplitude(decibels):
+    return 10 ** (decibels / 20)
 
 class AudioSynthesizer:
     def __init__(self, rirs, source_coords, audio_tracks_paths, total_duration):
@@ -126,6 +128,35 @@ class AudioSynthesizer:
         sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
 
 
+    def spatialize_whitenoise_events(self, n_polyphony=1, track_num=0, dest_dir="./output", db_gain=0):
+        # generate a copy of the available rirs to be used
+        rirs_list, coords_list = copy.deepcopy(self.rirs), copy.deepcopy(self.source_coords)
+        # intitalize convolve audio track
+        conv_sig = np.zeros((self.total_frames, self.num_chans))
+        # Define output filename: <track_num>_<polyphony>_<class_id_1>_<azi_1>_<ele_1>_<class_id_2>_<azi_2>_<ele_2>_... .wav
+        output_filename = f"{track_num+1:03d}_polyphony{n_polyphony}"
+        class_id = 440
+        for _ in range(n_polyphony):
+            # get random room impulse reponse
+            rir_idx = random.randrange(len(rirs_list))
+            rir_sig, coord = rirs_list[0], coords_list[0] #.pop(rir_idx), coords_list.pop(rir_idx) 
+            
+            t = np.linspace(0, self.total_duration, int(self.total_frames), endpoint=False)
+
+            noise, sr = librosa.load("./whitenoise.wav", sr=24000, mono=True)
+
+            noise *= convert_decibels_to_amplitude(db_gain)
+
+            event_sig = noise.reshape(-1, 1)
+            event_sig = np.tile(event_sig, (1, rir_sig.shape[-1]))
+
+            for ichan in range(self.num_chans):
+                conv_sig[:, ichan] += np.convolve(event_sig[:, ichan], rir_sig[:self.audio_FS, ichan], mode='same')
+        
+            output_filename += f"_{class_id}_{round(coord[1])}_{round(coord[2])}_gain_{db_gain}"
+        sf.write(os.path.join(dest_dir, f"{output_filename}.wav"), conv_sig, self.audio_FS)
+
+
 if __name__ == "__main__":
     # argument parser
     parser = argparse.ArgumentParser(description="Spatial audio synthesizer with YAML config file.")
@@ -150,7 +181,10 @@ if __name__ == "__main__":
     polyphony = params["polyphony"]
     os.makedirs(dest_dir, exist_ok=True)
     AudioSynth = AudioSynthesizer(rirs, source_coords, audio_tracks_paths, total_duration)
-
-    print("Synthesizing spatial audio...")
-    for track_num in tqdm(range(n_tracks)):
-        AudioSynth.spatialize_audio_events(polyphony, track_num, dest_dir)
+    db_gains_list = np.arange(0, -24, -3)
+    count = 0
+    for db_gain in db_gains_list:
+        print("Synthesizing spatial audio...", db_gain)
+        for track_num in tqdm(range(n_tracks)):
+            AudioSynth.spatialize_whitenoise_events(polyphony, count, dest_dir, db_gain)
+            count += 1
