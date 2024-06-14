@@ -10,7 +10,7 @@ import numpy as np
 import scipy
 from scipy.io import wavfile
 
-from util.utils import get_field, get_xyz, steering_operator
+from utils import get_field, get_xyz, steering_operator
 from apgd import *
 
 import scipy.constants as constants
@@ -221,5 +221,5 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
 save_path = "data_hdf"
 os.makedirs(save_path, exist_ok=True)
-data_src = "/scratch/data/repos/LAM/dataset/simulated/eval_output_vardur_poly1_maxdur2s"
-create_full_hdf_data(dataset_name='eval_output_vardur_poly1_maxdur2s', data_src=data_src, save_path=save_path)
+data_src = "/scratch/data/repos/LAM/dataset/simulated/train_output_vardur_poly1_maxdur2s"
+create_full_hdf_data(dataset_name='train_output_vardur_poly1_maxdur2s', data_src=data_src, save_path=save_path)
