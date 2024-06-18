@@ -29,6 +29,24 @@ eigenmike_raw = {
     "31": [122, 270, 0.042], "32": [159, 271, 0.042],
 }
 
+
+def sph2cart(azimuth, elevation):
+    """
+    Convert spherical coordinates to Cartesian coordinates.
+    
+    :param azimuth: Azimuth angle in degrees.
+    :param elevation: Elevation angle in degrees.
+    :return: Cartesian coordinates (x, y, z).
+    """
+    azimuth_rad = np.deg2rad(azimuth)
+    elevation_rad = np.deg2rad(elevation)
+    
+    x = np.cos(elevation_rad) * np.cos(azimuth_rad)
+    y = np.cos(elevation_rad) * np.sin(azimuth_rad)
+    z = np.sin(elevation_rad)
+    
+    return x, y, z
+
 def psnr(label, prediction):
     # maximum possible pixel value
     max_val = np.max(label)
