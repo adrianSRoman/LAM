@@ -9,9 +9,9 @@ def l1_loss():
     return torch.nn.L1Loss()
 
 class l1_reg_loss(nn.Module):
-    def __init__(self):
+    def __init__(self, device='cuda:0'):
         super(l1_reg_loss, self).__init__()
-        self.R_xyz = torch.from_numpy(get_field()).to('cuda:0')
+        self.R_xyz = torch.from_numpy(get_field()).to(device)
         self.N_max = 20
         self.l1_loss = torch.nn.L1Loss()
         
@@ -29,11 +29,10 @@ class l1_reg_loss(nn.Module):
         return total_loss, std_dist
 
 class l1_cov_loss(nn.Module):
-    def __init__(self, N_max=20):
+    def __init__(self, N_max=20, device='cuda:0'):
         super(l1_cov_loss, self).__init__()
-        self.R_xyz = torch.from_numpy(get_field()).to('cuda:0')
+        self.R_xyz = torch.from_numpy(get_field()).to(device)
         self.N_max = N_max
-        print("Max value being loaded", N_max)
         self.l1_loss = torch.nn.L1Loss()
         
     def forward(self, target, pred, latent):
