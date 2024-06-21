@@ -29,6 +29,21 @@ eigenmike_raw = {
     "31": [122, 270, 0.042], "32": [159, 271, 0.042],
 }
 
+def cart2sph(x, y, z):
+    """
+    Convert Cartesian coordinates to spherical coordinates.
+    
+    :param x: Cartesian x-coordinate.
+    :param y: Cartesian y-coordinate.
+    :param z: Cartesian z-coordinate.
+    :return: Spherical coordinates (r, azimuth, elevation) where r is the radial distance,
+             azimuth is the angle in degrees, and elevation is the angle in degrees.
+    """
+    r = np.sqrt(x**2 + y**2 + z**2)
+    azimuth = np.rad2deg(np.arctan2(y, x))
+    elevation = np.rad2deg(np.arcsin(z / r))
+    
+    return r, azimuth, elevation
 
 def sph2cart(azimuth, elevation):
     """
