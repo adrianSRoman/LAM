@@ -177,7 +177,6 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         for clip_name in tqdm(eigenmike_files):
             T_sti = random.choice(T_logs_spaced)
 
-            # print("Clipname ", os.path.basename(clip_name))
             fs, eigen_sig = wavfile.read(clip_name)
             vsg_sig, apgd = get_visibility_matrix(eigen_sig, fs, apgd=True, bands=[3], T_sti=T_sti) # visibility graph matrix 32ch 
 
@@ -185,8 +184,7 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
             mic_vsg_sig, _ = get_visibility_matrix(mic_sig, fs, apgd=False, bands=[3], T_sti=T_sti)
             mic_data.append(mic_vsg_sig.transpose(1, 0, 2, 3))
             vg_labels.append(vsg_sig.transpose(1, 0, 2, 3)) # (nframes, nbands, nch, nch)
-            #print(apgd.shape, mic_vsg_sig.shape)
-            apgd_labels.append(apgd.transpose(1, 0, 2))
+            apgd_labels.append(apgd.transpose(1, 0, 2)) # (nframes, nbands, Npx)
             
             for _ in range(apgd.shape[1]):
                 T_sti_list.append(T_sti)
@@ -212,14 +210,8 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         del a_np, b_np
         gc.collect()            
 
-#nbands = 10
-#freq, bw = (skutil  # Center frequencies to form images
-#        .view_as_windows(np.linspace(1500, 4500, nbands), (2,), 1)
-#        .mean(axis=-1)), 50.0  # [Hz]
-#print(freq)
-
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
 save_path = "data_hdf"
 os.makedirs(save_path, exist_ok=True)
-data_src = "/scratch/data/repos/LAM/dataset/simulated/train_output_vardur_poly1_maxdur2s"
-create_full_hdf_data(dataset_name='train_output_vardur_poly1_maxdur2s', data_src=data_src, save_path=save_path)
+data_src = "/scratch/data/repos/LAM/dataset/simulated/arni_eval_output_vardur_poly2_maxdur2s"
+create_full_hdf_data(dataset_name='arni_eval_output_vardur_poly2_maxdur2s', data_src=data_src, save_path=save_path)
