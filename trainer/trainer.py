@@ -11,6 +11,9 @@ from trainer.utils import *
 from trainer.base_trainer import BaseTrainer
 plt.switch_backend('agg')
 
+import mpl_toolkits.basemap as basemap
+from scipy.spatial.distance import pdist
+
 class Trainer(BaseTrainer):
     def __init__(
             self,
@@ -26,10 +29,13 @@ class Trainer(BaseTrainer):
         super(Trainer, self).__init__(config, resume, model, loss_function, optimizer)
         self.train_data_loader = train_dataloader
         self.validation_data_loader = validation_dataloader
+        self.R = get_field()
 
     def _train_epoch(self, epoch):
         loss_total = 0.0
-        
+        loss_cov_total = 0.0
+        loss_l1_total = 0.0
+
         for i, (S_hr, S_lr, _, _) in enumerate(self.train_data_loader):
             S_lr = S_lr.to(self.device)
             S_hr = S_hr.to(self.device)
@@ -37,23 +43,28 @@ class Trainer(BaseTrainer):
                 # call model w/ upsampling (CDBPN->Bproj)
                 S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
-                S_out,_ = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
+                S_out,latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
                 S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
-                S_out,_ = self.model(S_hr) # pass high-resolution matrix (32ch)
+                S_out,latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             
             S_out = S_out.unsqueeze(1)
-            loss = self.loss_function(S_out, S_hr) # compare prediction with 32 channel visibility matrix
+            latent_I = torch.abs(latent_x[0])
+            latent_I /= latent_I.max()
+            loss, loss_l1, loss_cov = self.loss_function(S_out, S_hr, latent_I) # compare prediction with 32 channel visibility matrix
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-
+            loss_l1_total += loss_l1.item()
+            loss_cov_total += loss_cov.item()
             loss_total += loss.item()
 
         dl_len = len(self.train_data_loader)
-        self.writer.add_scalar(f"Train/Loss", loss_total / dl_len, epoch)
+        self.writer.add_scalar(f"Train/Loss Total", loss_total / dl_len, epoch)
+        self.writer.add_scalar(f"Train/Loss Reconstruction", loss_l1_total / dl_len, epoch)
+        self.writer.add_scalar(f"Train/Loss Dispersion", loss_cov_total / dl_len, epoch)
 
     @torch.no_grad()
     def _validation_epoch(self, epoch):
@@ -78,11 +89,12 @@ class Trainer(BaseTrainer):
                 S_lr = S_lr.unsqueeze(1)
                 S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
-            
-            loss = self.loss_function(S_out.unsqueeze(1), S_hr)
+
+            latent_x = torch.abs(latent_x[0])
+            latent_x /= latent_x.max()
+            loss,_, _ = self.loss_function(S_out.unsqueeze(1), S_hr, latent_x)
             loss_total += loss.item()
-            latent_I = torch.abs(latent_x[0]).unsqueeze(0).detach().cpu().numpy()
-            latent_I /= latent_I.max()
+            latent_I = latent_x.unsqueeze(0).detach().cpu().numpy()
             latent_I = np.tile(latent_I, (3, 1))
             R_field = get_field()
             
