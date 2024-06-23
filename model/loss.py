@@ -52,16 +52,16 @@ class l1_reg_loss(nn.Module):
         total_loss = l1_loss + std_dist
         return total_loss, std_dist
 
-
-class l1_cov_loss(nn.Module):
+# Mean Squared Error + Dispersion loss
+class MSED_loss(nn.Module):
     def __init__(self, N_max=20, device='cuda:0'):
-        super(l1_cov_loss, self).__init__()
+        super(MSED_loss, self).__init__()
         self.R_xyz = torch.from_numpy(get_field()).to(device)
         self.N_max = N_max
-        self.l1_loss = ComplexMSELoss()
+        self.mse_loss = ComplexMSELoss()
         
     def forward(self, target, pred, latent):
-        l1_loss = self.l1_loss(target, pred)
+        mse_loss = self.mse_loss(target, pred)
         # Sort the latent tensor and get indices of top N_max values
         _, sorted_indices = torch.sort(latent, descending=True)
         max_idx = sorted_indices[:self.N_max]
@@ -73,5 +73,6 @@ class l1_cov_loss(nn.Module):
         cov_matrix = torch.matmul(centered_xyz.t(), centered_xyz) / (max_xyz.size(0) - 1)
         e_vals, e_vecs = torch.linalg.eigh(cov_matrix)
         e_val_sum = torch.sum(e_vals)
-        total_loss = l1_loss + 0.001*e_val_sum
-        return total_loss, l1_loss, 0.001*e_val_sum
+        total_loss = mse_loss + 0.001*e_val_sum
+        return total_loss, mse_loss, 0.001*e_val_sum
+
