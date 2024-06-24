@@ -33,7 +33,7 @@ class ComplexMSELoss(nn.Module):
         return total_loss
 
 class l1_reg_loss(nn.Module):
-    def __init__(self, device='cuda:0'):
+    def __init__(self, N_max=20, device='cuda:0'):
         super(l1_reg_loss, self).__init__()
         self.R_xyz = torch.from_numpy(get_field()).to(device)
         self.N_max = 20
@@ -42,37 +42,38 @@ class l1_reg_loss(nn.Module):
     def forward(self, target, pred, latent):
         l1_loss = self.l1_loss(target, pred)
         # Sort the latent tensor and get indices of top N_max values
-        _, sorted_indices = torch.sort(latent, descending=True)
-        max_idx = sorted_indices[:self.N_max]
+        #_, sorted_indices = torch.sort(latent, descending=True)
+        #max_idx = sorted_indices[:self.N_max]
         # get the coordinates of the N_max values only
-        max_xyz = self.R_xyz[:, max_idx].T
+        #max_xyz = self.R_xyz[:, max_idx].T
         # parwise ditances
-        dists = torch.nn.functional.pdist(max_xyz, p=2)
-        std_dist = torch.std(dists)
-        total_loss = l1_loss + std_dist
-        return total_loss, std_dist
+        #dists = torch.nn.functional.pdist(max_xyz, p=2)
+        #std_dist = torch.std(dists)
+        #total_loss = l1_loss + std_dist
+        return l1_loss, 0*l1_loss, 0*l1_loss#std_dist
 
 # Mean Squared Error + Dispersion loss
-class MSED_loss(nn.Module):
-    def __init__(self, N_max=20, device='cuda:0'):
-        super(MSED_loss, self).__init__()
+class MSEDLoss(nn.Module):
+    def __init__(self, N_max=20, dispersion_weight=0.01, device='cuda:0'):
+        super(MSEDLoss, self).__init__()
         self.R_xyz = torch.from_numpy(get_field()).to(device)
         self.N_max = N_max
         self.mse_loss = ComplexMSELoss()
+        self.dispersion_weight = dispersion_weight
         
     def forward(self, target, pred, latent):
         mse_loss = self.mse_loss(target, pred)
-        # Sort the latent tensor and get indices of top N_max values
-        _, sorted_indices = torch.sort(latent, descending=True)
-        max_idx = sorted_indices[:self.N_max]
-        # get the coordinates of the N_max values only
-        max_xyz = self.R_xyz[:, max_idx].T
-        # get mean coordinate
-        mean_xyz = max_xyz.mean(dim=0)
-        centered_xyz = max_xyz - mean_xyz
-        cov_matrix = torch.matmul(centered_xyz.t(), centered_xyz) / (max_xyz.size(0) - 1)
-        e_vals, e_vecs = torch.linalg.eigh(cov_matrix)
-        e_val_sum = torch.sum(e_vals)
-        total_loss = mse_loss + 0.001*e_val_sum
-        return total_loss, mse_loss, 0.001*e_val_sum
-
+        dispersion_loss = self.calculate_dispersion_loss(latent)
+        total_loss = mse_loss + self.dispersion_weight * dispersion_loss
+        
+        return total_loss, mse_loss, self.dispersion_weight * dispersion_loss
+    
+    def calculate_dispersion_loss(self, latent):
+        max_indices = torch.topk(latent, self.N_max).indices
+        max_xyz = self.R_xyz[:, max_indices].T
+        
+        centered_xyz = max_xyz - max_xyz.mean(dim=0)
+        cov_matrix = torch.matmul(centered_xyz.T, centered_xyz) / (self.N_max - 1)
+        e_vals = torch.linalg.eigvalsh(cov_matrix)
+        
+        return e_vals.sum()
