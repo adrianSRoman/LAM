@@ -32,25 +32,32 @@ class ComplexMSELoss(nn.Module):
 
         return total_loss
 
-class l1_reg_loss(nn.Module):
-    def __init__(self, N_max=20, device='cuda:0'):
-        super(l1_reg_loss, self).__init__()
+
+# L1 loss + centroid std deviation regularization
+class L1RegLoss(nn.Module):
+    def __init__(self, N_max=20, reg_weight=0.01, device='cuda:0'):
+        super(L1RegLoss, self).__init__()
         self.R_xyz = torch.from_numpy(get_field()).to(device)
-        self.N_max = 20
-        self.l1_loss = torch.nn.L1Loss()
+        self.N_max = N_max
+        self.l1_loss = nn.L1Loss()
+        self.reg_weight = reg_weight
         
     def forward(self, target, pred, latent):
         l1_loss = self.l1_loss(target, pred)
-        # Sort the latent tensor and get indices of top N_max values
-        #_, sorted_indices = torch.sort(latent, descending=True)
-        #max_idx = sorted_indices[:self.N_max]
-        # get the coordinates of the N_max values only
-        #max_xyz = self.R_xyz[:, max_idx].T
-        # parwise ditances
-        #dists = torch.nn.functional.pdist(max_xyz, p=2)
-        #std_dist = torch.std(dists)
-        #total_loss = l1_loss + std_dist
-        return l1_loss, 0*l1_loss, 0*l1_loss#std_dist
+        reg_loss = self.calculate_reg_loss(latent)
+        total_loss = l1_loss + self.reg_weight * reg_loss
+        
+        return total_loss, l1_loss, self.reg_weight * reg_loss
+    
+    def calculate_reg_loss(self, latent):
+        max_indices = torch.topk(latent, self.N_max).indices
+        max_xyz = self.R_xyz[:, max_indices].T
+        
+        dists = F.pdist(max_xyz, p=2)
+        std_dist = torch.std(dists)
+        
+        return std_dist
+
 
 # Mean Squared Error + Dispersion loss
 class MSEDLoss(nn.Module):
