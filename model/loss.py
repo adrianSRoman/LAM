@@ -84,3 +84,17 @@ class MSEDLoss(nn.Module):
         e_vals = torch.linalg.eigvalsh(cov_matrix)
         
         return e_vals.sum()
+
+class MSEL1Loss(nn.Module):
+    def __init__(self, dispersion_weight=0.002, device='cuda:0'):
+        super(MSEL1Loss, self).__init__()
+        self.mse_loss = ComplexMSELoss()
+        self.dispersion_weight = dispersion_weight
+
+    def forward(self, target, pred, latent):
+        mse_loss = self.mse_loss(target, pred)
+        mse_loss += self.dispersion_weight * torch.norm(latent, p=1)
+        return mse_loss, None, None
+
+
+
