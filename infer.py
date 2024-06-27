@@ -7,7 +7,9 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+import util.kmeans as km
 from util.utils import initialize_config, load_checkpoint
+from dataset.gen_dataset.gen_dataset import get_visibility_matrix
 
 """
 Parameters
@@ -22,7 +24,7 @@ args = parser.parse_args()
 """
 Preparation
 """
-os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+#os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 config = json.load(open(args.config))
 model_checkpoint_path = args.model_checkpoint_path
 output_dir = args.output_dir
@@ -49,11 +51,12 @@ for audio, name in tqdm(dataloader):
     assert len(name) == 1, "Only support batch size is 1 in enhancement stage."
     name = name[0]
     padded_length = 0
-
-    audio = audio.to(device)  # [1, 1, T]
-
+    audio = audio.cpu().detach().numpy()
+    audio = audio[0].T
     # convert audio to visibility matrix
-    
+    S_in,_ = get_visibility_matrix(audio, fs=24000, apgd=False, bands=[3])
+    S_in = torch.from_numpy(S_in).to(device)
     # perform inference
-
+    S_out, I_pred = model(S_in.squeeze(0))
+    print("Shapes of outputs", S_out.shape, I_pred.shape)
     # write output to dcase format
