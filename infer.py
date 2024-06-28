@@ -48,8 +48,6 @@ model.eval()
 """
 Inference loop
 """
-
-N_MAX = 12
 output_dict = {}
 for audio, name in tqdm(dataloader):
     assert len(name) == 1, "Only support batch size is 1 in enhancement stage."
@@ -62,14 +60,13 @@ for audio, name in tqdm(dataloader):
     S_in = torch.from_numpy(S_in).to(device)
     # perform inference
     S_out, I_pred = model(S_in.squeeze(0))
-    print("Shapes of outputs", S_out.shape, I_pred.shape)
     I_pred = I_pred.cpu().detach().numpy()
     # write output to dcase format
     R = get_field()
     # loop through each 100ms audio frame
     for i in range(I_pred.shape[0]):
         output_dict[i] = [] # list of DoA outputs per frame
-        lon, lat = km.get_kmeans_clusters(I_pred[i], R, N_max=N_MAX)
+        lon, lat = km.get_kmeans_clusters(I_pred[i], R, N_max=config["n_max"])
         # loop through the available clusters
         for iloc in range(len(lon)): # store predicted doa labels (1 <= pred_doa <= 3)
             output_dict[i].append([lon[iloc], lat[iloc]])
