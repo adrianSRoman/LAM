@@ -1,5 +1,6 @@
 import argparse
 import json
+import csv
 import os
 
 import librosa
@@ -7,8 +8,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import util.kmeans as km
-from util.utils import initialize_config, load_checkpoint
+import trainer.kmeans as km
+from util.utils import initialize_config, load_checkpoint, get_field, convert_polar_to_cartesian
 from dataset.gen_dataset.gen_dataset import get_visibility_matrix
 
 """
@@ -47,6 +48,9 @@ model.eval()
 """
 Inference loop
 """
+
+N_MAX = 12
+output_dict = {}
 for audio, name in tqdm(dataloader):
     assert len(name) == 1, "Only support batch size is 1 in enhancement stage."
     name = name[0]
@@ -59,4 +63,25 @@ for audio, name in tqdm(dataloader):
     # perform inference
     S_out, I_pred = model(S_in.squeeze(0))
     print("Shapes of outputs", S_out.shape, I_pred.shape)
+    I_pred = I_pred.cpu().detach().numpy()
     # write output to dcase format
+    R = get_field()
+    # loop through each 100ms audio frame
+    for i in range(I_pred.shape[0]):
+        output_dict[i] = [] # list of DoA outputs per frame
+        lon, lat = km.get_kmeans_clusters(I_pred[i], R, N_max=N_MAX)
+        # loop through the available clusters
+        for iloc in range(len(lon)): # store predicted doa labels (1 <= pred_doa <= 3)
+            output_dict[i].append([lon[iloc], lat[iloc]])
+
+
+    with open(os.path.join(output_dir, f"{name}.csv"), mode='w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        for i in range(I_pred.shape[0]):
+            for j in range(len(output_dict[i])): # iterate through number of predicted DOAs
+                x, y, z = convert_polar_to_cartesian(output_dict[i][j][0], output_dict[i][j][1])
+                row = [i, 0, 0, x, y, z]
+                csv_writer.writerow(row)
+
+
+
