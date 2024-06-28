@@ -23,7 +23,7 @@ python train.py -C config/train/train.json -R
 Use `infer.py` to run inference with a pre-trained model.
 
 ```
-TBD	
+python infer.py -C config/inference/inference.json -D 0 -O inference_out_dir -M train/checkpoints/model_0100.pth
 ```
 
 ## Visualization
