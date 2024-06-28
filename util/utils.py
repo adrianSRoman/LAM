@@ -120,6 +120,14 @@ _EIGENMIKE_ = {
     "31": [122, 270, 0.042], "32": [159, 271, 0.042],
 }
 
+def convert_polar_to_cartesian(azi_polar, ele_polar):
+    ele_rad = ele_polar*np.pi/180.0
+    azi_rad = azi_polar*np.pi/180.0
+    tmp_label = np.cos(ele_rad)
+    x = np.cos(azi_rad) * tmp_label
+    y = np.sin(azi_rad) * tmp_label
+    z = np.sin(ele_rad)
+    return x, y, z
 
 def eq2cart(r, lat, lon):
     r = np.array([r]) #if chk.is_scalar(r) else np.array(r, copy=False)
