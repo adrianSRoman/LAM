@@ -13,7 +13,7 @@ class InferenceDataset(Dataset):
             (audio_signal, filename)
         """
         super(InferenceDataset, self).__init__()
-        dataset_list = [os.path.join(dataset, wavfile) for wavfile in os.path.listdir(dataset) if wavfile.endswith(".wav")]
+        dataset_list = [os.path.join(dataset, wavfile) for wavfile in os.listdir(dataset) if wavfile.endswith(".wav")]
 
         self.length = len(dataset_list)
         self.dataset_list = dataset_list
@@ -24,7 +24,5 @@ class InferenceDataset(Dataset):
     def __getitem__(self, item):
         clip_path = self.dataset_list[item]
         name = os.path.splitext(os.path.basename(clip_path))[0] # get filename
-
-        mixture, _ = librosa.load(os.path.abspath(os.path.expanduser(mixture_path)), sr=None)
-
-        return mixture.reshape(1, -1), name
+        audio, _ = librosa.load(os.path.abspath(os.path.expanduser(clip_path)), sr=None, mono=False)
+        return audio, name
