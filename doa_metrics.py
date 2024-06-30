@@ -1,11 +1,12 @@
 import csv
 import os
-import SELD_evaluation_metrics
-import cls_feature_class
-import parameters
+import json5
+import argparse
 import numpy as np
 from scipy import stats
 from IPython import embed
+
+import SELD_evaluation_metrics
 
 
 # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
@@ -32,6 +33,82 @@ def load_output_format_file(_output_format_file):
             _output_dict[_frame_ind].append([int(_words[1]), int(_words[2]), float(_words[3]), float(_words[4]), float(_words[5])])
     _fid.close()
     return _output_dict
+
+def segment_labels(_pred_dict, _max_frames):
+    '''
+    Collects class-wise sound event location information in segments of length 1s from reference dataset
+    :param _pred_dict: Dictionary containing frame-wise sound event time and location information. Output of SELD method
+    :param _max_frames: Total number of frames in the recording
+    :return: Dictionary containing class-wise sound event location information in each segment of audio
+    dictionary_name[segment-index][class-index] = list(frame-cnt-within-segment, azimuth, elevation)
+    '''
+    nb_label_frames_1s = 10 # 10 frames per second
+    nb_blocks = int(np.ceil(_max_frames/float(nb_label_frames_1s)))
+    output_dict = {x: {} for x in range(nb_blocks)}
+    for frame_cnt in range(0, _max_frames, nb_label_frames_1s):
+        # Collect class-wise information for each block
+        # [class][frame] = <list of doa values>
+        # Data structure supports multi-instance occurence of same class
+        block_cnt = frame_cnt // nb_label_frames_1s
+        loc_dict = {}
+        for audio_frame in range(frame_cnt, frame_cnt+nb_label_frames_1s):
+            if audio_frame not in _pred_dict:
+                continue
+            for value in _pred_dict[audio_frame]:
+                if value[0] not in loc_dict:
+                    loc_dict[value[0]] = {}
+
+                block_frame = audio_frame - frame_cnt
+                if block_frame not in loc_dict[value[0]]:
+                    loc_dict[value[0]][block_frame] = []
+                loc_dict[value[0]][block_frame].append(value[1:])
+
+        # Update the block wise details collected above in a global structure
+        for class_cnt in loc_dict:
+            if class_cnt not in output_dict[block_cnt]:
+                output_dict[block_cnt][class_cnt] = []
+
+            keys = [k for k in loc_dict[class_cnt]]
+            values = [loc_dict[class_cnt][k] for k in loc_dict[class_cnt]]
+
+            output_dict[block_cnt][class_cnt].append([keys, values])
+
+    return output_dict
+
+
+def convert_output_format_polar_to_cartesian(in_dict):
+    out_dict = {}
+    for frame_cnt in in_dict.keys():
+        if frame_cnt not in out_dict:
+            out_dict[frame_cnt] = []
+            for tmp_val in in_dict[frame_cnt]:
+
+                ele_rad = tmp_val[3]*np.pi/180.
+                azi_rad = tmp_val[2]*np.pi/180
+
+                tmp_label = np.cos(ele_rad)
+                x = np.cos(azi_rad) * tmp_label
+                y = np.sin(azi_rad) * tmp_label
+                z = np.sin(ele_rad)
+                out_dict[frame_cnt].append([tmp_val[0], tmp_val[1], x, y, z])
+    return out_dict
+
+
+def convert_output_format_cartesian_to_polar(in_dict):
+    out_dict = {}
+    for frame_cnt in in_dict.keys():
+        if frame_cnt not in out_dict:
+            out_dict[frame_cnt] = []
+            for tmp_val in in_dict[frame_cnt]:
+                x, y, z = tmp_val[2], tmp_val[3], tmp_val[4]
+
+                # in degrees
+                azimuth = np.arctan2(y, x) * 180 / np.pi
+                elevation = np.arctan2(z, np.sqrt(x**2 + y**2)) * 180 / np.pi
+                r = np.sqrt(x**2 + y**2 + z**2)
+                out_dict[frame_cnt].append([tmp_val[0], tmp_val[1], azimuth, elevation])
+    return out_dict
+
 
 #------------------------------------------------------------------------------------------------
 
@@ -73,27 +150,29 @@ def jackknife_estimation(global_value, partial_estimates, significance_level=0.0
 
     return estimate, bias, std_err, conf_interval
 
+
 class ComputeSELDResults(object):
     def __init__(
             self, params, ref_files_folder=None, use_polar_format=True
     ):
         self._use_polar_format = use_polar_format
-        self._desc_dir = ref_files_folder if ref_files_folder is not None else os.path.join(params['dataset_dir'], 'metadata_dev')
+        self._desc_dir = os.path.join(params['ground_truths'], 'metadata_dev')
         self._doa_thresh = params['lad_doa_thresh']
+        self._num_classes = params['num_classes']
 
         # Load feature class
-        self._feat_cls = cls_feature_class.FeatureClass(params)
+        #self._feat_cls = cls_feature_class.FeatureClass(params)
         
         # collect reference files
         self._ref_labels = {}
         for split in os.listdir(self._desc_dir):      
             for ref_file in os.listdir(os.path.join(self._desc_dir, split)):
                 # Load reference description file
-                gt_dict = self._feat_cls.load_output_format_file(os.path.join(self._desc_dir, split, ref_file))
+                gt_dict = load_output_format_file(os.path.join(self._desc_dir, split, ref_file))
                 if not self._use_polar_format:
-                    gt_dict = self._feat_cls.convert_output_format_polar_to_cartesian(gt_dict)
+                    gt_dict = convert_output_format_polar_to_cartesian(gt_dict)
                 nb_ref_frames = max(list(gt_dict.keys()))
-                self._ref_labels[ref_file] = [self._feat_cls.segment_labels(gt_dict, nb_ref_frames), nb_ref_frames]
+                self._ref_labels[ref_file] = [segment_labels(gt_dict, nb_ref_frames), nb_ref_frames]
 
         self._nb_ref_files = len(self._ref_labels)
         self._average = params['average']
@@ -130,13 +209,13 @@ class ComputeSELDResults(object):
         # collect predicted files info
         pred_files = os.listdir(pred_files_path)
         pred_labels_dict = {}
-        eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._feat_cls.get_nb_classes(), doa_threshold=self._doa_thresh, average=self._average)
+        eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._num_classes, doa_threshold=self._doa_thresh, average=self._average)
         for pred_cnt, pred_file in enumerate(pred_files):
             # Load predicted output format file
-            pred_dict = self._feat_cls.load_output_format_file(os.path.join(pred_files_path, pred_file))
+            pred_dict = load_output_format_file(os.path.join(pred_files_path, pred_file))
             if self._use_polar_format:
-                pred_dict = self._feat_cls.convert_output_format_cartesian_to_polar(pred_dict)
-            pred_labels = self._feat_cls.segment_labels(pred_dict, self._ref_labels[pred_file][1])
+                pred_dict = convert_output_format_cartesian_to_polar(pred_dict)
+            pred_labels = segment_labels(pred_dict, self._ref_labels[pred_file][1])
             # Calculated scores
             eval.update_seld_scores(pred_labels, self._ref_labels[pred_file][0])
             if is_jackknife:
@@ -153,7 +232,7 @@ class ComputeSELDResults(object):
             for leave_file in pred_files:
                 leave_one_out_list = pred_files[:]
                 leave_one_out_list.remove(leave_file)
-                eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._feat_cls.get_nb_classes(), doa_threshold=self._doa_thresh, average=self._average)
+                eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._num_classes, doa_threshold=self._doa_thresh, average=self._average)
                 for pred_cnt, pred_file in enumerate(leave_one_out_list):
                     # Calculated scores
                     eval.update_seld_scores(pred_labels_dict[pred_file], self._ref_labels[pred_file][0])
@@ -177,6 +256,7 @@ class ComputeSELDResults(object):
       
         else:      
             return ER, F, LE, LR, seld_scr, classwise_results
+
 
     def get_consolidated_SELD_results(self, pred_files_path, score_type_list=['all', 'room']):
         '''
@@ -205,7 +285,7 @@ class ComputeSELDResults(object):
             # Calculate scores across files for a given score_type
             for split_key in np.sort(list(split_cnt_dict)):
                 # Load evaluation metric class
-                eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._feat_cls.get_nb_classes(), doa_threshold=self._doa_thresh, average=self._average)
+                eval = SELD_evaluation_metrics.SELDMetrics(nb_classes=self._num_classes, doa_threshold=self._doa_thresh, average=self._average)
                 for pred_cnt, pred_file in enumerate(split_cnt_dict[split_key]):
                     # Load predicted output format file
                     pred_dict = self._feat_cls.load_output_format_file(os.path.join(pred_output_format_files, pred_file))
@@ -224,25 +304,26 @@ class ComputeSELDResults(object):
                 print('SED metrics: Error rate: {:0.2f}, F-score:{:0.1f}'.format(ER, 100*F))
                 print('DOA metrics: Localization error: {:0.1f}, Localization Recall: {:0.1f}'.format(LE, 100*LR))
 
-def reshape_3Dto2D(A):
-    return A.reshape(A.shape[0] * A.shape[1], A.shape[2])
-
 
 if __name__ == "__main__":
-    pred_output_format_files = 'results/3_11553814_dev_split0_multiaccdoa_foa_20220429142557_test' # Path of the DCASEoutput format files
-    params = parameters.get_params()
-    # Compute just the DCASE final results 
-    score_obj = ComputeSELDResults(params)
+    parser = argparse.ArgumentParser(description="DoA metrics based on DCASE task3")
+    parser.add_argument("-C", "--configuration", required=True, type=str, help="Configuration (*.json).")
+    args = parser.parse_args()
+    config = json5.load(open(args.configuration))
+
+    pred_output_format_files = config["predictions"]  # Path of the DCASEoutput format files
+    score_obj = ComputeSELDResults(config) # Compute just the DCASE final results
+
     use_jackknife=False
     ER, F, LE, LR, seld_scr, classwise_test_scr = score_obj.get_SELD_Results(pred_output_format_files,is_jackknife=use_jackknife )
    
     print('SELD score (early stopping metric): {:0.2f} {}'.format(seld_scr[0] if use_jackknife else seld_scr, '[{:0.2f}, {:0.2f}]'.format(seld_scr[1][0], seld_scr[1][1]) if use_jackknife else ''))
     print('SED metrics: Error rate: {:0.2f} {}, F-score: {:0.1f} {}'.format(ER[0]  if use_jackknife else ER, '[{:0.2f},  {:0.2f}]'.format(ER[1][0], ER[1][1]) if use_jackknife else '', 100*F[0]  if use_jackknife else 100*F, '[{:0.2f}, {:0.2f}]'.format(100*F[1][0], 100*F[1][1]) if use_jackknife else ''))
     print('DOA metrics: Localization error: {:0.1f} {}, Localization Recall: {:0.1f} {}'.format(LE[0] if use_jackknife else LE, '[{:0.2f}, {:0.2f}]'.format(LE[1][0], LE[1][1]) if use_jackknife else '', 100*LR[0]  if use_jackknife else 100*LR,'[{:0.2f}, {:0.2f}]'.format(100*LR[1][0], 100*LR[1][1]) if use_jackknife else ''))
-    if params['average']=='macro':
+    if config['average']=='macro':
         print('Classwise results on unseen test data')
         print('Class\tER\tF\tLE\tLR\tSELD_score')
-        for cls_cnt in range(params['unique_classes']):
+        for cls_cnt in range(config['unique_classes']):
             print('{}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}'.format(
 cls_cnt, 
 classwise_test_scr[0][0][cls_cnt] if use_jackknife else classwise_test_scr[0][cls_cnt], '[{:0.2f}, {:0.2f}]'.format(classwise_test_scr[1][0][cls_cnt][0], classwise_test_scr[1][0][cls_cnt][1]) if use_jackknife else '', 
