@@ -55,7 +55,7 @@ for audio, name in tqdm(dataloader):
     padded_length = 0
     audio = audio.cpu().detach().numpy()
     audio = audio[0].T
-    # convert audio to visibility matrix
+    # compute visibility matrix from audio
     S_in,_ = get_visibility_matrix(audio, fs=24000, apgd=False, bands=[3])
     S_in = torch.from_numpy(S_in).to(device)
     # perform inference
@@ -71,7 +71,7 @@ for audio, name in tqdm(dataloader):
         for iloc in range(len(lon)): # store predicted doa labels (1 <= pred_doa <= 3)
             output_dict[i].append([lon[iloc], lat[iloc]])
 
-
+    # Write to CSV in DCASE format
     with open(os.path.join(output_dir, f"{name}.csv"), mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         for i in range(I_pred.shape[0]):
