@@ -14,8 +14,7 @@ import numpy as np
 import pyunlocbox as opt
 from pyunlocbox.functions import dummy
 
-from utils import eighMax
-
+from util.utils import eighMax
 
 class l2_loss(opt.functions.func):
     r"""
