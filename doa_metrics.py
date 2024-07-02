@@ -27,8 +27,8 @@ def load_output_format_file(_output_format_file):
             _output_dict[_frame_ind] = []
         if len(_words) == 5:  # frame, class idx, source_id, polar coordinates(2) # no distance data, for example in synthetic data fold 1 and
             _output_dict[_frame_ind].append([int(_words[1]), int(_words[2]), float(_words[3]), float(_words[4])])
-        if len(_words) == 6: # frame, class idx, source_id, polar coordinates(2), distance
-            _output_dict[_frame_ind].append([int(_words[1]), int(_words[2]), float(_words[3]), float(_words[4])])
+        if len(_words) == 6:  # frame, class idx, source_id, cartesian coordinates(3) # no distance data
+            _output_dict[_frame_ind].append([int(_words[1]), int(_words[2]), float(_words[3]), float(_words[4]), float(_words[5])])
         elif len(_words) == 7: # frame, class idx, source_id, cartesian coordinates(3), distance
             _output_dict[_frame_ind].append([int(_words[1]), int(_words[2]), float(_words[3]), float(_words[4]), float(_words[5])])
     _fid.close()
@@ -213,7 +213,7 @@ class ComputeSELDResults(object):
         for pred_cnt, pred_file in enumerate(pred_files):
             # Load predicted output format file
             pred_dict = load_output_format_file(os.path.join(pred_files_path, pred_file))
-            if self._use_polar_format:
+            if self._use_polar_format: # asroman
                 pred_dict = convert_output_format_cartesian_to_polar(pred_dict)
             pred_labels = segment_labels(pred_dict, self._ref_labels[pred_file][1])
             # Calculated scores
@@ -323,7 +323,7 @@ if __name__ == "__main__":
     if config['average']=='macro':
         print('Classwise results on unseen test data')
         print('Class\tER\tF\tLE\tLR\tSELD_score')
-        for cls_cnt in range(config['unique_classes']):
+        for cls_cnt in range(config['num_classes']):
             print('{}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}'.format(
 cls_cnt, 
 classwise_test_scr[0][0][cls_cnt] if use_jackknife else classwise_test_scr[0][cls_cnt], '[{:0.2f}, {:0.2f}]'.format(classwise_test_scr[1][0][cls_cnt][0], classwise_test_scr[1][0][cls_cnt][1]) if use_jackknife else '', 
