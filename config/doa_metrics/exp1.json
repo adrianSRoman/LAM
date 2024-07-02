@@ -1,0 +1,7 @@
+{
+    "ground_truths": "/scratch/ssd1/audio_datasets/LOCATA_EM32",
+    "predictions": "/scratch/data/repos/LAM/locata_pred_k12",
+    "lad_doa_thresh": 20,
+    "average": "macro", 
+    "num_classes": 1
+}
