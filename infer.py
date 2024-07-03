@@ -8,6 +8,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from torch.utils.data import DataLoader
+
 import trainer.kmeans as km
 from util.utils import initialize_config, load_checkpoint, get_field, convert_polar_to_cartesian
 from dataset.gen_dataset.gen_dataset import get_visibility_matrix
@@ -35,7 +37,7 @@ assert os.path.exists(output_dir), "Inference outpud directory should exist."
 DataLoader
 """
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-dataloader = DataLoader(dataset=initialize_config(config["dataset"]), batch_size=1, num_workers=0)
+dataloader = DataLoader(dataset=initialize_config(config["dataset"]), batch_size=1, num_workers=4)
 
 """
 Model
@@ -56,7 +58,7 @@ for audio, name in tqdm(dataloader):
     audio = audio.cpu().detach().numpy()
     audio = audio[0].T
     # compute visibility matrix from audio
-    S_in,_ = get_visibility_matrix(audio, fs=24000, apgd=False, bands=[3])
+    S_in,_ = get_visibility_matrix(audio, fs=config["FS"], apgd=False, bands=[3])
     S_in = torch.from_numpy(S_in).to(device)
     # perform inference
     S_out, I_pred = model(S_in.squeeze(0))
@@ -79,6 +81,3 @@ for audio, name in tqdm(dataloader):
                 x, y, z = convert_polar_to_cartesian(output_dict[i][j][0], output_dict[i][j][1])
                 row = [i, 0, 0, x, y, z]
                 csv_writer.writerow(row)
-
-
-
