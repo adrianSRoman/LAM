@@ -1,2 +1,2 @@
-*.ipynb_checkpoints/
-*.ipynb -linguist-detectable
+./analysis/*.ipynb_checkpoints/
+./analysis/*.ipynb -linguist-detectable
