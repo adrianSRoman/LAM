@@ -407,8 +407,43 @@ def cmap_from_list(name, colors, N=256, gamma=1.0):
 
     return matplotlib.colors.LinearSegmentedColormap(name, cdict, N, gamma)
 
+from sklearn.mixture import GaussianMixture
+from matplotlib.patches import Ellipse
 
-def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, fig=None, ax=None, kmeans=False):
+def draw_ellipse(position, covariance, ax=None, **kwargs):
+    """Draw an ellipse with a given position and covariance"""
+    ax = ax or plt.gca()
+    # Convert covariance to principal axes
+    if covariance.shape == (2, 2):
+        U, s, Vt = np.linalg.svd(covariance)
+        angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+        width, height = 2 * np.sqrt(s)
+        print(width, height)
+    else:
+        angle = 0
+        width, height = 2 * np.sqrt(covariance)
+    
+    # Draw the Ellipse
+    for nsig in range(1, 4):
+        print("Width", Ellipse(position, nsig * width, nsig * height,
+                             angle, **kwargs).width)
+        ax.add_patch(Ellipse(position, nsig * width, nsig * height,
+                             angle, **kwargs))
+        
+def plot_gmm(gmm, X, label=True, ax=None):
+    ax = ax or plt.gca()
+    labels = gmm.fit(X).predict(X)
+    if label:
+        ax.scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
+    else:
+        ax.scatter(X[:, 0], X[:, 1], s=40, zorder=2)
+    ax.axis('equal')
+    
+    w_factor = 0.2 / gmm.weights_.max()
+    for pos, covar, w in zip(gmm.means_, gmm.covariances_, gmm.weights_):
+        draw_ellipse(pos, covar, alpha=w * w_factor)
+
+def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, fig=None, ax=None, kmeans=False, gaussian_mixture=False):
     """
     Parameters
     ==========
@@ -454,6 +489,7 @@ def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, 
     ax.tripcolor(triangulation, colors_cmap, cmap=mycmap,
                  shading='gouraud', alpha=0.9, edgecolors='w', linewidth=0.1)
 
+    
     cluster_center = None
     if kmeans:
         Npts = 6  # find N maximum points
@@ -465,6 +501,14 @@ def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, 
         ax.scatter(R_x[max_idx], R_y[max_idx], c='b', s=5)  # plot all N points
         ax.scatter(clusters[:, 0], clusters[:, 1], s=500, alpha=0.3)  # plot the center as a large point
         cluster_center = bm(clusters[:, 0][0], clusters[:, 1][0], inverse=True)
+    elif gaussian_mixture:
+        # compute Gaussian Mixture model
+        Npts = 30
+        I_s = np.square(I).sum(axis=0)
+        max_idx = I_s.argsort()[-Npts:][::-1]
+        x_y = np.column_stack((R_x[max_idx], R_y[max_idx]))  # stack N max energy points
+        gmm = GaussianMixture(n_components=1,random_state=42)
+        plot_gmm(gmm, x_y)
 
     return fig, ax, cluster_center
 
