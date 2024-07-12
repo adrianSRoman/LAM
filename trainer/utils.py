@@ -167,7 +167,7 @@ def spherical_jn_series_threshold(x, table_lookup=True, epsilon=1e-2):
             if 1 - series(n_opt, x) < epsilon:
                 return n_opt
             
-def fibonacci(N, direction=None, FoV=None):            
+def fibonacci(N, direction=None, FoV=None, shift_lon=0, shift_colat=0):            
     if direction is not None:
         direction = np.array(direction, dtype=float)
         direction /= linalg.norm(direction)
@@ -185,7 +185,7 @@ def fibonacci(N, direction=None, FoV=None):
     n = np.arange(N_px)
 
     colat = np.arccos(1 - (2 * n + 1) / N_px)
-    lon = (4 * np.pi * n) / (1 + np.sqrt(5))
+    lon = (4 * np.pi * n) / (1 + np.sqrt(5)) + shift_lon
     XYZ = np.stack(pol2cart(1, colat, lon), axis=0)
 
     if direction is not None:  # region-limited case.
@@ -197,7 +197,7 @@ def fibonacci(N, direction=None, FoV=None):
     return XYZ
 
 
-def get_field(min_freq=1500, max_freq=4500,nbands=10):
+def get_field(min_freq=1500, max_freq=4500,nbands=10, shift_lon=0, shift_colat=0):
     freq, bw = (skutil  # Center frequencies to form images
             .view_as_windows(np.linspace(min_freq, max_freq, 10), (2,), 1)
             .mean(axis=-1)), 50.0  # [Hz]
@@ -207,7 +207,7 @@ def get_field(min_freq=1500, max_freq=4500,nbands=10):
     wl_min = constants.speed_of_sound / (freq.max() + 500)
     #sh_order = nyquist_rate(dev_xyz, wl_min) # Maximum order of complex plane waves that can be imaged by the instrument.
     sh_order=10
-    R = fibonacci(sh_order)
+    R = fibonacci(sh_order, direction=None, FoV=None, shift_lon=shift_lon, shift_colat=shift_colat)
     R_mask = np.abs(R[2, :]) < np.sin(np.deg2rad(90)) #50))
     R = R[:, R_mask]  # Shrink visible view to avoid border effects.
     return R
