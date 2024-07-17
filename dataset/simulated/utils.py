@@ -143,7 +143,7 @@ def get_arni_dataset(aud_fmt="em32"):
     for rir_id, meas in enumerate(meas_sorted_ord): # for each meas in decreasing order
         # add impulse response
         irdata = rirdata[meas, :, :]
-        irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=SYNTH_FS)
+        irdata_resamp = librosa.resample(irdata, orig_sr=FS, target_sr=SYNTH_FS, axis=-1)
         irdata_resamp *= 0.5 # Normalize to ~30dBFS
         hir_data.append(irdata_resamp)
         # Compute the centered and translated positions
