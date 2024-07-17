@@ -580,3 +580,19 @@ def comp_plot(x, y, x_g, y_g, timestamp, azimuth, elevation, ir_times, out_folde
     fig.write_html(out_folder + "time.html")
     fig.show()
 
+
+
+def rms_normalizer(signal):
+    """
+    Normalizes signal based on its energy.
+
+    This function calculates the energy of each channel as the square root of the sum of its squared values.
+    It then normalizes each channel by the mean energy across all channels.
+
+    """
+    if len(signal.shape) > 1:
+        E = np.sqrt(np.sum(np.power(np.abs(signal), 2), axis=-1, keepdims=True))
+        denom = np.mean(E, axis=-2, keepdims=True)
+    else:
+        denom = np.sqrt(np.sum(np.power(np.abs(signal), 2)))
+    return signal / denom
