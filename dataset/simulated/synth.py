@@ -31,7 +31,7 @@ DCASE_SOUND_EVENT_CLASSES = {
     "knock": 12,
 }
 
-LEAVE_OUT_CLASSES = ["femaleSpeech", "maleSpeech", "clapping", "telephone", "laughter", "domesticSounds", "footsteps",
+LEAVE_OUT_CLASSES = ["clapping", "telephone", "laughter", "domesticSounds", "footsteps",
                     "doorCupboard", "musicInstrument",  "waterTap", "bell", "knock"]
 
 
