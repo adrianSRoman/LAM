@@ -33,6 +33,17 @@ audio_clips = [
     "/scratch/data/repos/SpatialScaper/datasets/sound_event_datasets/FSD50K_FMA/music/test/Rock/000255.mp3"
 ]
 
+norm_factor = 0
+output_sig = np.zeros((10, FS * duration)) # initialize empty output convolved signal
+for i, clip in enumerate(audio_clips):
+    aud_sig, sr = librosa.load(clip, mono=True, sr=None)
+    if sr != FS:
+        aud_sig = librosa.resample(aud_sig, orig_sr=sr, target_sr=FS)
+    output_sig[i] = aud_sig[:FS * duration]
+
+_,music_norm = rms_normalizer(output_sig)
+
+
 def distance_simulation(freq_indx, use_noise=False):
     conv_signals = []
     var_dist_list = [] # variance distance list
@@ -40,30 +51,32 @@ def distance_simulation(freq_indx, use_noise=False):
     for rir_tokens in rirs_list:
         clips_var_list = []
         max_azimuth = [] # list of azimuth values of the highest intensity pixel
-        for clip in audio_clips:
+        for i, clip in enumerate(audio_clips):
             output_sig = np.zeros((FS * duration, num_chans)) # initialize empty output convolved signal
             rir_name = rir_tokens[0] + rir_tokens[1] + rir_tokens[2] # get tokens to RIR names
             ir_path = os.path.join(METU_DATASET, rir_name, f"IR_{aud_fmt}.wav")
             irdata, sr = librosa.load(ir_path, mono=False, sr=FS)
             if sr != FS:
                 irdata = librosa.resample(irdata, orig_sr=sr, target_sr=FS, axis=-1)
-            irdata *= 0.3 # Normalize to ~30dBFS
-        
-            irdata = rms_normalizer(irdata) # appply normalization
+            #irdata *= 0.3 # Normalize to ~30dBFS
+                
+            irdata,_ = rms_normalizer(irdata) # appply normalization
             rir_sig = irdata.T        
 
             aud_sig, sr = librosa.load(clip, mono=True, sr=None)
             if sr != FS:
                 aud_sig = librosa.resample(aud_sig, orig_sr=sr, target_sr=FS)
-            aud_sig = rms_normalizer(aud_sig)
-    
+            #aud_sig,_ = rms_normalizer(aud_sig)
+            aud_sig /= music_norm[0]
+
             if use_noise: # overwrite signal with gaussian noise (whitenoise)
                 aud_sig = torch.randn(duration*FS)
 
             # Perform signal convolution - spatialize it
             for ichan in range(num_chans):
                 output_sig[:, ichan] += np.convolve(aud_sig[:FS * duration], rir_sig[:FS, ichan], mode='same')
-
+            
+            wavfile.write(f'output_{i}.wav', FS, output_sig)
             # get acoustic map
             T_sti = 10e-3 * 20 # 100ms audio frames
             vsg_sig, apgd = get_visibility_matrix(output_sig, FS, apgd=True, bands=bands, T_sti=T_sti) # visibility graph matrix 32ch
