@@ -144,7 +144,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3):
             else:
                 S_D = np.clip(S_D / S_D.max(), 0, None)
             S_norm = (S_V * S_D) @ S_V.conj().T
-            S_norm = S[s_idx]   
+            # S_norm = S[s_idx]   
             visibilities_per_frame.append(S_norm)
             if apgd:
                 I_apgd = solve(S_norm, A, gamma=apgd_gamma, x0=I_prev.copy(), verbosity='NONE')
