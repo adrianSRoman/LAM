@@ -41,16 +41,17 @@ class Trainer(BaseTrainer):
             S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                S_lr = S_lr.unsqueeze(1)
-                S_hr = S_hr.unsqueeze(1)
+                #S_lr = S_lr.unsqueeze(1)
+                #S_hr = S_hr.unsqueeze(1)
                 S_out,latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                S_lr = S_lr.unsqueeze(1)
-                S_hr = S_hr.unsqueeze(1)
+                #S_lr = S_lr.unsqueeze(1)
+                #S_hr = S_hr.unsqueeze(1)
                 S_out,latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             
-            S_out = S_out.unsqueeze(1)
+            #S_out = S_out.unsqueeze(1)
+            
             #latent_I = torch.abs(latent_x[0])
             #latent_I /= latent_I.max()
             latent_I = torch.abs(latent_x[0])
@@ -82,23 +83,30 @@ class Trainer(BaseTrainer):
             S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                S_lr = S_lr.unsqueeze(1)
-                S_hr = S_hr.unsqueeze(1)
+                #S_lr = S_lr.unsqueeze(1)
+                #S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                S_lr = S_lr.unsqueeze(1)
-                S_hr = S_hr.unsqueeze(1)
+                #S_lr = S_lr.unsqueeze(1)
+                #S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
-
+    
+            #S_out = S_out.unsqueeze(1)
             #latent_x = torch.abs(latent_x[0])
             #latent_x /= latent_x.max()
-            loss,_, _ = self.loss_function(S_out.unsqueeze(1), S_hr, latent_x)
+            loss,_, _ = self.loss_function(S_out, S_hr, latent_x)
             loss_total += loss.item()
-            latent_x = torch.abs(latent_x[0])
-            latent_x /= latent_x.max()
-            latent_I = latent_x.unsqueeze(0).detach().cpu().numpy()
-            latent_I = np.tile(latent_I, (3, 1))
+            #latent_x = latent_x[:,3,:] # NOTE: temporary until we adopt the multi freq band label too
+            #print("Latent X shape", latent_x.shape)
+            latent_x = latent_x[0] #torch.abs(latent_x[0])
+            #latent_x /= latent_x.max()
+            latent_I = latent_x.detach().cpu().numpy()
+            #print("Latent I shape", latent_I.shape)
+            latent_I = to_RGB(latent_I)
+            #print("latent_I shape", latent_I.shape)
+            #latent_I = np.tile(latent_I, (3, 1))
+            latent_I /= latent_I.max()
             R_field = get_field()
             
             ##############################################################################
@@ -119,9 +127,12 @@ class Trainer(BaseTrainer):
             if i <= visualize_limit:
                 ax = axes[1] # subplot 2
                 arg_lonticks = np.linspace(-180, 180, 5)
-                apgd_map = torch.abs(apgd_label[0])
+                #print("shape of label", apgd_label.shape)
+                #apgd_map = torch.abs(apgd_label[0])
+                apgd_map = to_RGB(apgd_label[0].detach().cpu().numpy())
                 apgd_map /= apgd_map.max()
-                apgd_map = np.tile(apgd_map, (3, 1))
+                #print("apgd map shape", apgd_map.shape)
+                #apgd_map = np.tile(apgd_map, (3, 1))
                 fig2, ax2, triangulation2 = draw_map(apgd_map, R_field,
                         lon_ticks=arg_lonticks,
                         catalog=None,
@@ -179,10 +190,10 @@ class Trainer(BaseTrainer):
                 for j, y in enumerate([mat_in, mat_out, mat_in, mat_out]):
                     vis_matrix = y
                     if j < 2:
-                        im = ax[j].imshow(np.angle(vis_matrix[0]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
+                        im = ax[j].imshow(np.angle(vis_matrix[0, 8]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
                         ax[j].set_title("Visibility matrix (phase) - label & prediction")
                     else:
-                        im = ax[j].imshow(np.abs(vis_matrix[0]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
+                        im = ax[j].imshow(np.abs(vis_matrix[0, 8]), cmap='viridis', interpolation='nearest') #, vmin=min_val, vmax=max_val)
                         ax[j].set_title("Visibility matrix (mag) - label & prediction")
                     ax[j].set_xlabel('Column Index')
                     ax[j].set_ylabel('Row Index')
