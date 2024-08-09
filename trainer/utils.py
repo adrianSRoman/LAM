@@ -443,6 +443,22 @@ def plot_gmm(gmm, X, label=True, ax=None):
     for pos, covar, w in zip(gmm.means_, gmm.covariances_, gmm.weights_):
         draw_ellipse(pos, covar, alpha=w * w_factor)
 
+def to_RGB(I):
+    """
+    Parameters
+    ----------
+    I : :py:class:`~numpy.ndarray`
+        (9, N_px) real-valued intensity (per frequency)
+
+    Returns
+    -------
+    I_rgb: :py:class:`~numpy.ndarray`
+        (3, N_px) real-valued intensity (per color-band)
+    """
+    N_px = I.shape[1]
+    I_rgb = I.reshape((3, 3, N_px)).sum(axis=1)
+    return I_rgb
+
 def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, fig=None, ax=None, kmeans=False, gaussian_mixture=False):
     """
     Parameters
@@ -595,4 +611,4 @@ def rms_normalizer(signal):
         denom = np.mean(E, axis=-2, keepdims=True)
     else:
         denom = np.sqrt(np.sum(np.power(np.abs(signal), 2)))
-    return signal / denom
+    return signal / denom, denom
