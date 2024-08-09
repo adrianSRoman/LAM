@@ -7,14 +7,25 @@ from model.bproj import BackProjLayer
 from model.cdbpn import Net as CDBPN
 
 class CDBPNProj(nn.Module):
-    def __init__(self, num_channels=1, base_filter=32, feat=128, num_stages=10, scale_factor=8):
+    def __init__(self, num_channels=9, base_filter=32, feat=128, num_stages=10, scale_factor=8):
         super(CDBPNProj, self).__init__()
         self.cdbpn = CDBPN(num_channels, base_filter,  feat, num_stages, scale_factor=scale_factor)
-        self.bproj = BackProjLayer()
+        self.bproj_layers = nn.ModuleList([BackProjLayer() for _ in range(num_channels)])
 
     def forward(self, S):
         S_pred = self.cdbpn(S.real, S.imag)      # perform upsampling
-        out, x = self.bproj(S_pred) # get prediction and latent
+        out_list = []
+        x_list = []
+        
+        # apply the BackProjLayer to each frequency band
+        for i in range(S_pred.size(1)):  # iterating over the freq_band dimension
+            out, x = self.bproj_layers[i](S_pred[:, i, :, :])  # process each freq_band separately
+            out_list.append(out)
+            x_list.append(x)
+        
+        # stack outputs along the freq_band dimension
+        out = torch.stack(out_list, dim=1)
+        x = torch.stack(x_list, dim=1)
         return out, x
 
 # Code to setup mixed precision and perform model profiling
