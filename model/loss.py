@@ -86,7 +86,7 @@ class MSEDLoss(nn.Module):
         return e_vals.sum()
 
 class MSEL1Loss(nn.Module):
-    def __init__(self, dispersion_weight=0.002, device='cuda:0'):
+    def __init__(self, dispersion_weight=0.0001, device='cuda:0'):
         super(MSEL1Loss, self).__init__()
         self.mse_loss = ComplexMSELoss()
         self.dispersion_weight = dispersion_weight
