@@ -41,32 +41,20 @@ class Trainer(BaseTrainer):
             S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                #S_lr = S_lr.unsqueeze(1)
-                #S_hr = S_hr.unsqueeze(1)
                 S_out,latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                #S_lr = S_lr.unsqueeze(1)
-                #S_hr = S_hr.unsqueeze(1)
                 S_out,latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             
-            #S_out = S_out.unsqueeze(1)
-            
-            #latent_I = torch.abs(latent_x[0])
-            #latent_I /= latent_I.max()
             latent_I = torch.abs(latent_x[0])
             loss, _, _ = self.loss_function(S_out, S_hr, latent_I) # compare prediction with 32 channel visibility matrix
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            loss_l1_total += 0.0 #loss_l1.item()
-            loss_cov_total += 0.0 #loss_cov.item()
             loss_total += loss.item()
 
         dl_len = len(self.train_data_loader)
         self.writer.add_scalar(f"Train/Loss Total", loss_total / dl_len, epoch)
-        self.writer.add_scalar(f"Train/Loss Reconstruction", loss_l1_total / dl_len, epoch)
-        self.writer.add_scalar(f"Train/Loss Dispersion", loss_cov_total / dl_len, epoch)
 
     @torch.no_grad()
     def _validation_epoch(self, epoch):
@@ -83,29 +71,16 @@ class Trainer(BaseTrainer):
             S_hr = S_hr.to(self.device)
             if self.upsample:
                 # call model w/ upsampling (CDBPN->Bproj)
-                #S_lr = S_lr.unsqueeze(1)
-                #S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
                 # call model w/o upsampling (Bproj)
-                #S_lr = S_lr.unsqueeze(1)
-                #S_hr = S_hr.unsqueeze(1)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
     
-            #S_out = S_out.unsqueeze(1)
-            #latent_x = torch.abs(latent_x[0])
-            #latent_x /= latent_x.max()
             loss,_, _ = self.loss_function(S_out, S_hr, latent_x)
             loss_total += loss.item()
-            #latent_x = latent_x[:,3,:] # NOTE: temporary until we adopt the multi freq band label too
-            #print("Latent X shape", latent_x.shape)
             latent_x = latent_x[0] #torch.abs(latent_x[0])
-            #latent_x /= latent_x.max()
             latent_I = latent_x.detach().cpu().numpy()
-            #print("Latent I shape", latent_I.shape)
             latent_I = to_RGB(latent_I)
-            #print("latent_I shape", latent_I.shape)
-            #latent_I = np.tile(latent_I, (3, 1))
             latent_I /= latent_I.max()
             R_field = get_field()
             
@@ -127,12 +102,8 @@ class Trainer(BaseTrainer):
             if i <= visualize_limit:
                 ax = axes[1] # subplot 2
                 arg_lonticks = np.linspace(-180, 180, 5)
-                #print("shape of label", apgd_label.shape)
-                #apgd_map = torch.abs(apgd_label[0])
                 apgd_map = to_RGB(apgd_label[0].detach().cpu().numpy())
                 apgd_map /= apgd_map.max()
-                #print("apgd map shape", apgd_map.shape)
-                #apgd_map = np.tile(apgd_map, (3, 1))
                 fig2, ax2, triangulation2 = draw_map(apgd_map, R_field,
                         lon_ticks=arg_lonticks,
                         catalog=None,
