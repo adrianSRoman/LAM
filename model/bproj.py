@@ -54,7 +54,7 @@ class BackProjLayer(torch.nn.Module):
             :obj:`torch.Tensor`: output: (batch_size, N_px)
         """
         device = S.device # get the device where the computation is being performed
-        self.A = self.A.to(device) # Move A to the appropriate device
+        self.A = self.A.to(device) # move A to cuda device
         S = S.squeeze(1)
         batch_size, N_ch = S.shape[:2]
         N_px = self.tau.shape[0]

@@ -10,8 +10,8 @@ import numpy as np
 import scipy
 from scipy.io import wavfile
 
-from utils import get_field, get_xyz, steering_operator
-from apgd import *
+from util.utils import get_field, get_xyz, steering_operator
+from util.apgd import *
 
 import scipy.constants as constants
 import scipy.io.wavfile as wavfile
@@ -113,7 +113,7 @@ def form_visibility(data, rate, fc, bw, T_sti, T_stationarity):
         .sum(axis=1))
     return S
 
-def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3], T_sti=10e-3):
+def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3):
     # audio_in, fs = self._load_audio(audio_filename)
     nbands = 10
     freq, bw = (skutil  # Center frequencies to form images
@@ -129,8 +129,6 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3], T_sti=10e-3):
     visibilities = []
     apgd_map = []
     for i in range(nbands-1):
-        if i not in bands:
-            continue
         T_sti = T_sti
         T_stationarity = 10 * T_sti  # Choose to have frame_rate = 10
         S = form_visibility(audio_in, fs, freq[i], bw, T_sti, T_stationarity)
@@ -146,6 +144,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[3], T_sti=10e-3):
             else:
                 S_D = np.clip(S_D / S_D.max(), 0, None)
             S_norm = (S_V * S_D) @ S_V.conj().T
+            # S_norm = S[s_idx]   
             visibilities_per_frame.append(S_norm)
             if apgd:
                 I_apgd = solve(S_norm, A, gamma=apgd_gamma, x0=I_prev.copy(), verbosity='NONE')
@@ -178,10 +177,10 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
             T_sti = random.choice(T_logs_spaced)
 
             fs, eigen_sig = wavfile.read(clip_name)
-            vsg_sig, apgd = get_visibility_matrix(eigen_sig, fs, apgd=True, bands=[3], T_sti=T_sti) # visibility graph matrix 32ch 
+            vsg_sig, apgd = get_visibility_matrix(eigen_sig, fs, apgd=True, bands=[], T_sti=T_sti) # visibility graph matrix 32ch 
 
             mic_sig = eigen_sig[:, [5,9,25,21]] # 4 ch raw MIC
-            mic_vsg_sig, _ = get_visibility_matrix(mic_sig, fs, apgd=False, bands=[3], T_sti=T_sti)
+            mic_vsg_sig, _ = get_visibility_matrix(mic_sig, fs, apgd=False, bands=[], T_sti=T_sti)
             mic_data.append(mic_vsg_sig.transpose(1, 0, 2, 3))
             vg_labels.append(vsg_sig.transpose(1, 0, 2, 3)) # (nframes, nbands, nch, nch)
             apgd_labels.append(apgd.transpose(1, 0, 2)) # (nframes, nbands, Npx)
@@ -211,7 +210,7 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         gc.collect()            
 
 ## Parameters used to train network with ARNI+METU dataset that constains some silence
-save_path = "data_hdf"
-os.makedirs(save_path, exist_ok=True)
-data_src = "/scratch/data/repos/LAM/dataset/simulated/arni_eval_output_vardur_poly2_maxdur2s"
-create_full_hdf_data(dataset_name='arni_eval_output_vardur_poly2_maxdur2s', data_src=data_src, save_path=save_path)
+#save_path = "data_hdf"
+#os.makedirs(save_path, exist_ok=True)
+#data_src = "/scratch/data/repos/LAM/dataset/simulated/arni_eval_output_vardur_poly2_maxdur2s"
+#create_full_hdf_data(dataset_name='arni_eval_output_vardur_poly2_maxdur2s', data_src=data_src, save_path=save_path)
