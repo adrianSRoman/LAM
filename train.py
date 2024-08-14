@@ -55,10 +55,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Latent Acoustic Map (LAM)")
     parser.add_argument("-C", "--configuration", required=True, type=str, help="Configuration (*.json).")
     parser.add_argument("-R", "--resume", action="store_true", help="Resume experiment from latest checkpoint.")
+    parser.add_argument("-D", "--device", default=0, type=int, help="CUDA device to use for training.")
     args = parser.parse_args()
 
     configuration = json5.load(open(args.configuration))
     configuration["experiment_name"], _ = os.path.splitext(os.path.basename(args.configuration))
     configuration["config_path"] = args.configuration
+    configuration["device"] = args.device
 
     main(configuration, resume=args.resume)
