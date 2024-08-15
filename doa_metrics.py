@@ -156,9 +156,9 @@ class ComputeSELDResults(object):
             self, params, ref_files_folder=None, use_polar_format=True
     ):
         self._use_polar_format = use_polar_format
-        self._desc_dir = os.path.join(params['ground_truths'], 'metadata_dev')
-        self._doa_thresh = params['lad_doa_thresh']
-        self._num_classes = params['num_classes']
+        self._desc_dir = os.path.join(params['doa_params']['ground_truths'], 'metadata_dev')
+        self._doa_thresh = params['doa_params']['lad_doa_thresh']
+        self._num_classes = params['doa_params']['num_classes']
 
         # Load feature class
         #self._feat_cls = cls_feature_class.FeatureClass(params)
@@ -175,7 +175,7 @@ class ComputeSELDResults(object):
                 self._ref_labels[ref_file] = [segment_labels(gt_dict, nb_ref_frames), nb_ref_frames]
 
         self._nb_ref_files = len(self._ref_labels)
-        self._average = params['average']
+        self._average = params['doa_params']['average']
 
     @staticmethod
     def get_nb_files(file_list, tag='all'):
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config = json5.load(open(args.configuration))
 
-    pred_output_format_files = config["predictions"]  # Path of the DCASEoutput format files
+    pred_output_format_files = config["doa_params"]["predictions"]  # Path of the DCASEoutput format files
     score_obj = ComputeSELDResults(config) # Compute just the DCASE final results
 
     use_jackknife=False
@@ -320,10 +320,10 @@ if __name__ == "__main__":
     print('SELD score (early stopping metric): {:0.2f} {}'.format(seld_scr[0] if use_jackknife else seld_scr, '[{:0.2f}, {:0.2f}]'.format(seld_scr[1][0], seld_scr[1][1]) if use_jackknife else ''))
     print('SED metrics: Error rate: {:0.2f} {}, F-score: {:0.1f} {}'.format(ER[0]  if use_jackknife else ER, '[{:0.2f},  {:0.2f}]'.format(ER[1][0], ER[1][1]) if use_jackknife else '', 100*F[0]  if use_jackknife else 100*F, '[{:0.2f}, {:0.2f}]'.format(100*F[1][0], 100*F[1][1]) if use_jackknife else ''))
     print('DOA metrics: Localization error: {:0.1f} {}, Localization Recall: {:0.1f} {}'.format(LE[0] if use_jackknife else LE, '[{:0.2f}, {:0.2f}]'.format(LE[1][0], LE[1][1]) if use_jackknife else '', 100*LR[0]  if use_jackknife else 100*LR,'[{:0.2f}, {:0.2f}]'.format(100*LR[1][0], 100*LR[1][1]) if use_jackknife else ''))
-    if config['average']=='macro':
+    if config["doa_params"]['average']=='macro':
         print('Classwise results on unseen test data')
         print('Class\tER\tF\tLE\tLR\tSELD_score')
-        for cls_cnt in range(config['num_classes']):
+        for cls_cnt in range(config["doa_params"]['num_classes']):
             print('{}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}\t{:0.2f} {}'.format(
 cls_cnt, 
 classwise_test_scr[0][0][cls_cnt] if use_jackknife else classwise_test_scr[0][cls_cnt], '[{:0.2f}, {:0.2f}]'.format(classwise_test_scr[1][0][cls_cnt][0], classwise_test_scr[1][0][cls_cnt][1]) if use_jackknife else '', 

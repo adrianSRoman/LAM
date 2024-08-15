@@ -19,9 +19,7 @@ Parameters
 """
 parser = argparse.ArgumentParser("LAM: Latent Acoustic Map")
 parser.add_argument("-C", "--config", type=str, required=True, help="Model and dataset for enhancement (*.json).")
-parser.add_argument("-D", "--device", default="-1", type=str, help="GPU for acoustic mapping. default: CPU")
-parser.add_argument("-O", "--output_dir", type=str, required=True, help="Where to save DCASE format output csv.")
-parser.add_argument("-M", "--model_checkpoint_path", type=str, required=True, help="Checkpoint.")
+parser.add_argument("-D", "--device", default="0", type=str, help="GPU for acoustic mapping. default: CPU")
 args = parser.parse_args()
 
 """
@@ -29,14 +27,15 @@ Preparation
 """
 #os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 config = json.load(open(args.config))
-model_checkpoint_path = args.model_checkpoint_path
-output_dir = args.output_dir
-assert os.path.exists(output_dir), "Inference outpud directory should exist."
+output_dir = config["output_dir"]
+os.makedirs(output_dir, exist_ok=True) # generate output directory if doesn't exist
+model_checkpoint_path = config["model_path"]
+assert os.path.exists(output_dir), "Inference output directory not found."
 
 """
 DataLoader
 """
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device(f"cuda:{args.device}") if torch.cuda.is_available() else torch.device("cpu")
 dataloader = DataLoader(dataset=initialize_config(config["dataset"]), batch_size=1, num_workers=4)
 
 """
@@ -58,10 +57,11 @@ for audio, name in tqdm(dataloader):
     audio = audio.cpu().detach().numpy()
     audio = audio[0].T
     # compute visibility matrix from audio
-    S_in,_ = get_visibility_matrix(audio, fs=config["FS"], apgd=False, bands=[3])
-    S_in = torch.from_numpy(S_in).to(device)
+    S_in,_ = get_visibility_matrix(audio, fs=config["FS"], apgd=False)
+    S_in = torch.from_numpy(S_in).to(device).permute(1, 0, 2, 3)
     # perform inference
-    S_out, I_pred = model(S_in.squeeze(0))
+    S_out, I_pred = model(S_in)#.squeeze(0))
+    I_pred = torch.prod(I_pred, dim=1, keepdim=True).squeeze(1) # product along the freq-bands and remove freq dim 
     I_pred = I_pred.cpu().detach().numpy()
     # write output to dcase format
     R = get_field()

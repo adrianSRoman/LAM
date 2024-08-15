@@ -21,8 +21,8 @@ class BaseTrainer:
                  optimizer):
 
         # TODO: distributed computing for some reason doesn't play well with multiple GPUs :(
-        self.n_gpu = 1 #torch.cuda.device_count()
-        self.device = 'cuda:0' #self._prepare_device(self.n_gpu, cudnn_deterministic=config["cudnn_deterministic"])
+        self.n_gpu = 1 
+        self.device = f'cuda:{config["device"]}' 
 
         self.optimizer = optimizer
         self.loss_function = loss_function
