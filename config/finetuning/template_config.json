@@ -1,0 +1,62 @@
+{
+    "seed": 0,
+    "description": "...des",
+    "root_dir": "/scratch/data/repos/LAM",
+    "cudnn_deterministic": false,
+    "trainer": {
+        "module": "trainer.trainer",
+        "main": "Trainer",
+        "epochs": 100,
+	"upsample": true,
+        "save_checkpoint_interval": 10,
+        "validation": {
+		"interval": 5,
+		"find_max": true,
+		"custom": {
+                "visualize_limit": 20
+            }
+        }
+    },
+    "model": {
+        "module": "model.cdbpnproj",
+        "main": "CDBPNProj",
+	"args": {
+	}
+    },
+    "loss_function": {
+        "module": "model.loss",
+        "main": "MSEL1Loss",
+        "args": {
+		"l1_weight": 0.0001
+	}
+    },
+    "optimizer": {
+        "lr": 0.00001,
+        "beta1": 0.9,
+        "beta2": 0.999
+    },
+    "train_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/scratch/data/repos/LAM/dataset/gen_dataset/data_hdf/train_output_vardur_poly1_maxdur2s.hdf",
+            "freq_band": null,
+	    "mode": "train"
+        }
+    },
+    "validation_dataset": {
+        "module": "dataset.dataloader",
+        "main": "Dataset",
+        "args": {
+            "dataset": "/scratch/data/repos/LAM/dataset/gen_dataset/data_hdf/arni_eval_output_vardur_poly1_maxdur2s.hdf",
+            "freq_band": null,
+	    "mode": "validation"
+        }
+    },
+    "train_dataloader": {
+        "batch_size": 8,
+        "num_workers": 40,
+        "shuffle": true,
+        "pin_memory": true
+    }
+}
