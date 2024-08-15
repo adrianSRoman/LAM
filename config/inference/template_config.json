@@ -1,0 +1,26 @@
+{
+    "model": {
+        "module": "model.nbproj",
+        "main": "NBProj",
+        "args": {}
+    },
+    "dataset": {
+        "module": "dataset.inference_dataloader",
+        "main": "InferenceDataset",
+        "args": {
+            "dataset": "/scratch/ssd1/audio_datasets/LOCATA_EM32/mic_dev/mic/"
+        }
+    },
+    "model_path": "/scratch/data/repos/LAM/train_nbproj_daga_locata_32ch_9band_1e-6_1e-4_32/checkpoints/model_0070.pth",
+    "output_dir": "output_nbproj_daga_locata_32ch_9band_1e-6_1e-4_32", 
+    "n_max": 18,
+    "num_workers": 12,
+    "FS": 24000,
+    "doa_params": {
+        "ground_truths": "/scratch/ssd1/audio_datasets/LOCATA_EM32",
+        "predictions": "output_nbproj_daga_locata_32ch_9band_1e-6_1e-4_32",
+        "lad_doa_thresh": 20,
+        "average": "macro", 
+        "num_classes": 1
+    }
+}
