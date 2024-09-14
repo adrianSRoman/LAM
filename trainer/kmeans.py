@@ -50,11 +50,13 @@ def get_kmeans_clusters(I, R, catalog=None, N_max=50):
                         llcrnrlon=R_az_min, urcrnrlon=R_az_max)
     R_x, R_y = bm(R_az, R_el)
 
+    weights = I[max_idx] # extract k-means weights
+
     # Create Kmeans clusters
     K = 3 
     for _k in range(K, 0, -1):
         x_y = np.column_stack((R_x[max_idx], R_y[max_idx]))
-        km_res = KMeans(n_clusters=_k).fit(x_y)
+        km_res = KMeans(n_clusters=_k).fit(x_y, sample_weight=weights)
         clusters = km_res.cluster_centers_
         centroid_lon, centroid_lat = bm(clusters[:,0], clusters[:,1], inverse=True)
 
