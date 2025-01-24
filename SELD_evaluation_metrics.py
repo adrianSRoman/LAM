@@ -256,6 +256,7 @@ def least_distance_between_gt_pred(gt_list, pred_list):
     """
 
     gt_len, pred_len = gt_list.shape[0], pred_list.shape[0]
+    #print(gt_list, pred_list)
     ind_pairs = np.array([[x, y] for y in range(pred_len) for x in range(gt_len)])
     cost_mat = np.zeros((gt_len, pred_len))
 
