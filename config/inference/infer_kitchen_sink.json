@@ -1,0 +1,26 @@
+{
+    "model": {
+        "module": "model.nbproj",
+        "main": "NBProj",
+        "args": {}
+    },
+    "dataset": {
+        "module": "dataset.inference_dataloader",
+        "main": "InferenceDataset",
+        "args": {
+            "dataset": "/path/to/wavfiles/"
+        }
+    },
+    "model_path": "/scratch/data/repos/LAM_ckpts/checkpoints/lam_32_ch.pth",
+    "output_dir": "output_infer",
+    "n_max": 18,
+    "num_workers": 12,
+    "FS": 24000,
+    "doa_params": {
+        "ground_truths": "/scratch/ssd1/audio_datasets/LOCATA_EM32",
+        "predictions": "output_infer",
+        "lad_doa_thresh": 25,
+        "average": "macro",
+        "num_classes": 1
+    }
+}
