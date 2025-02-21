@@ -2,13 +2,11 @@ import argparse
 import json
 import csv
 import os
-
+import numpy as np
 import librosa
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
-from torch.utils.data import DataLoader
 
 import trainer.kmeans as km
 from util.utils import initialize_config, load_checkpoint, get_field, convert_polar_to_cartesian
@@ -50,34 +48,38 @@ model.eval()
 Inference loop
 """
 output_dict = {}
-for audio, name in tqdm(dataloader):
-    assert len(name) == 1, "Only support batch size is 1 in enhancement stage."
-    name = name[0]
-    padded_length = 0
-    audio = audio.cpu().detach().numpy()
-    audio = audio[0].T
-    # compute visibility matrix from audio
-    S_in,_ = get_visibility_matrix(audio, fs=config["FS"], apgd=False)
-    S_in = torch.from_numpy(S_in).to(device).permute(1, 0, 2, 3)
-    # perform inference
-    S_out, I_pred = model(S_in)#.squeeze(0))
-    I_pred = torch.prod(I_pred, dim=1, keepdim=True).squeeze(1) # product along the freq-bands and remove freq dim 
-    I_pred = I_pred.cpu().detach().numpy()
-    # write output to dcase format
-    R = get_field()
-    # loop through each 100ms audio frame
-    for i in range(I_pred.shape[0]):
-        output_dict[i] = [] # list of DoA outputs per frame
-        lon, lat = km.get_kmeans_clusters(I_pred[i], R, N_max=config["n_max"])
-        # loop through the available clusters
-        for iloc in range(len(lon)): # store predicted doa labels (1 <= pred_doa <= 3)
-            output_dict[i].append([lon[iloc], lat[iloc]])
-
-    # Write to CSV in DCASE format
-    with open(os.path.join(output_dir, f"{name}.csv"), mode='w', newline='') as csv_file:
-        csv_writer = csv.writer(csv_file)
+with torch.no_grad():
+    for audio, name in tqdm(dataloader):
+        assert len(name) == 1, "Only support batch size is 1 in enhancement stage."
+        name = name[0]
+        padded_length = 0
+        audio = audio.cpu().detach().numpy()
+        audio = audio[0].T
+        if config["model"]["main"] == "LAM": # get 4ch data from Em32 array
+            audio = audio[:, [5,9,25,21]]
+        # compute visibility matrix from audio
+        S_in,_ = get_visibility_matrix(audio, fs=config["FS"], apgd=False)
+        S_in = torch.from_numpy(S_in).to(device).permute(1, 0, 2, 3)
+        # perform inference
+        S_out, I_pred = model(S_in)#.squeeze(0))
+        I_pred = I_pred.cpu().detach().numpy()
+        I_pred = np.square(I_pred).sum(axis=1)
+        
+        # write output to dcase format
+        R = get_field()
+        # loop through each 100ms audio frame
         for i in range(I_pred.shape[0]):
-            for j in range(len(output_dict[i])): # iterate through number of predicted DOAs
-                x, y, z = convert_polar_to_cartesian(output_dict[i][j][0], output_dict[i][j][1])
-                row = [i, 0, 0, x, y, z]
-                csv_writer.writerow(row)
+            output_dict[i] = [] # list of DoA outputs per frame
+            lon, lat = km.get_kmeans_clusters(I_pred[i], R, N_max=config["n_max"])
+            # loop through the available clusters
+            for iloc in range(len(lon)): # store predicted doa labels (1 <= pred_doa <= 3)
+                output_dict[i].append([lon[iloc], lat[iloc]])
+
+        # Write to CSV in DCASE format
+        with open(os.path.join(output_dir, f"{name}.csv"), mode='w', newline='') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            for i in range(I_pred.shape[0]):
+                for j in range(len(output_dict[i])): # iterate through number of predicted DOAs
+                    x, y, z = convert_polar_to_cartesian(output_dict[i][j][0], output_dict[i][j][1])
+                    row = [i, 0, 0, x, y, z]
+                    csv_writer.writerow(row)
