@@ -14,7 +14,7 @@ def initialize_scaled_kaiming(layer, scale=1e-6):
         layer.bias.data.fill_(1e-6)  # Small bias to avoid dead neurons
 
 
-class BackProjLayer(torch.nn.Module):
+class LAMLayer(torch.nn.Module):
     def __init__(self, Nch=32, tau=None, D=None):
         super().__init__()
         self.A = torch.from_numpy(steering_operator())
