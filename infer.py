@@ -16,7 +16,7 @@ from dataset.gen_dataset.gen_dataset import get_visibility_matrix
 Parameters
 """
 parser = argparse.ArgumentParser("LAM: Latent Acoustic Map")
-parser.add_argument("-C", "--config", type=str, required=True, help="Model and dataset for enhancement (*.json).")
+parser.add_argument("-C", "--config", type=str, required=True, help="Model and dataset for k-means inference (*.json).")
 parser.add_argument("-D", "--device", default="0", type=str, help="GPU for acoustic mapping. default: CPU")
 args = parser.parse_args()
 
