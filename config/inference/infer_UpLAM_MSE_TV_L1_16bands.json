@@ -1,0 +1,26 @@
+{
+    "model": {
+        "module": "model.UpLAM",
+        "main": "UpLAM",
+        "args": {}
+    },
+    "dataset": {
+        "module": "dataset.inference_dataloader",
+        "main": "InferenceDataset",
+        "args": {
+            "dataset": "/scratch/ssd1/LAM_datasets/starss_test/mic/"
+        }
+    },
+    "model_path": "/path/to/train_UpLAM_MSE_TV_L1_16bands/checkpoints/model.pth",
+    "output_dir": "output_infer_starss_4ch",
+    "n_max": 18,
+    "num_workers": 12,
+    "FS": 24000,
+    "doa_params": {
+        "ground_truths": "/scratch/ssd1/LAM_datasets/starss_test",
+        "predictions": "output_infer_starss_4ch",
+        "lad_doa_thresh": 25,
+        "average": "macro",
+        "num_classes": 1
+    }
+}

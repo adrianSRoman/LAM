@@ -18,17 +18,27 @@ python train.py -C config/train/train.json
 python train.py -C config/train/train.json -R
 ```
 
-## Inference
+## Inference (K-means)
 
 Use `infer.py` to run inference with a pre-trained model.
 
+- `-h`, display help information
+- `-D, --device`, GPU index to be use (0 for single GPU / default)
+- `-C, --config`, Configuration for k-means inference (*.json).
+
 ```
-python infer.py -C /path/to/config/inference.json -D 0 -O /path/to/destination_dir -M /path/to/train/checkpoints/checkpoint.pth
+python infer.py -C /path/to/config/inference.json -D 0
 ```
 
 Example:
 ```
-python infer.py -C config/inference/inference.json -D 0 -O inference_out_dir -M train/checkpoints/model_0100.pth
+python infer.py -C config/inference/inference.json -D 0
+```
+
+## DoA Metrics from Infered K-means Output
+
+```
+python doa_metrics.py -C /path/to/config/inference.json
 ```
 
 ## Visualization

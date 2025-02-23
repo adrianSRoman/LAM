@@ -40,10 +40,10 @@ class Trainer(BaseTrainer):
             S_lr = S_lr.to(self.device)
             S_hr = S_hr.to(self.device)
             if self.upsample:
-                # call model w/ upsampling (CDBPN->Bproj)
+                # call model w/ upsampling (CDBPN->LAM)
                 S_out,latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
-                # call model w/o upsampling (Bproj)
+                # call model w/o upsampling (LAM)
                 S_out,latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
             
             latent_I = torch.abs(latent_x[0])
@@ -70,13 +70,14 @@ class Trainer(BaseTrainer):
             S_lr = S_lr.to(self.device)
             S_hr = S_hr.to(self.device)
             if self.upsample:
-                # call model w/ upsampling (CDBPN->Bproj)
+                # call model w/ upsampling (CDBPN->LAM)
                 S_out, latent_x = self.model(S_lr) # pass low-resolution matrix (4ch) and upsample (32ch)
             else:
-                # call model w/o upsampling (Bproj)
+                # call model w/o upsampling (LAM)
                 S_out, latent_x = self.model(S_hr) # pass high-resolution matrix (32ch)
     
-            loss,_, _ = self.loss_function(S_out, S_hr, latent_x)
+            latent_I = torch.abs(latent_x[0])
+            loss, _, _ = self.loss_function(S_out, S_hr, latent_I)
             loss_total += loss.item()
             latent_x = latent_x[0] #torch.abs(latent_x[0])
             latent_I = latent_x.detach().cpu().numpy()

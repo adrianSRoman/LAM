@@ -456,7 +456,14 @@ def to_RGB(I):
         (3, N_px) real-valued intensity (per color-band)
     """
     N_px = I.shape[1]
-    I_rgb = I.reshape((3, 3, N_px)).sum(axis=1)
+    N_px = I.shape[1]
+    # Create a copy of the input array if it's going to be modified
+    I_copy = I.copy()
+    if I.shape[0] != 9:
+        print("grabbing first 9 bands for plotting purposes")
+        I_copy = I_copy[list(range(1, 10)), :]  # grab 9 frequency bands
+    
+    I_rgb = I_copy.reshape((3, 3, N_px)).sum(axis=1)
     return I_rgb
 
 def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, fig=None, ax=None, kmeans=False, gaussian_mixture=False):
@@ -474,12 +481,16 @@ def draw_map(I, R, lon_ticks, catalog=None, show_labels=False, show_axis=False, 
     R_el_min, R_el_max = np.around([np.min(R_el), np.max(R_el)])
     R_az_min, R_az_max = np.around([np.min(R_az), np.max(R_az)])
 
+    lat_range = R_el_max - R_el_min
+    lon_range = R_az_max - R_az_min
+
     #fig, ax = plt.subplots()
     bm = basemap.Basemap(projection='mill',
                          llcrnrlat=R_el_min, urcrnrlat=R_el_max,
                          llcrnrlon=R_az_min, urcrnrlon=R_az_max,
                          resolution='c',
                          ax=ax)
+
 
     if show_axis:
         bm_labels = [1, 0, 0, 1]
