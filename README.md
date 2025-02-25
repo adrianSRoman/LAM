@@ -1,6 +1,10 @@
 # LAM
 Work in progress: Latent Acoustic Map
 
+## Generate dataset
+
+See [more details on how to generate the HDF dataset](dataset/gen_dataset/README.md).
+
 ## Training
 
 Use `train.py` to train the model. 
