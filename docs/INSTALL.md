@@ -12,6 +12,7 @@ conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch-lts -c 
 
 ## Install requirements
 
-```
+```bash
+pip install -e .
 pip install -r requirements.txt
 ```
