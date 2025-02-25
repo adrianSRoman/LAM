@@ -1,13 +1,15 @@
 import os
-from tqdm import tqdm
+import gc
+import h5py
+import scipy
 import pickle
 import random
-from random import randrange
-import gc
-from glob import glob
-import h5py
+import librosa
+import argparse
 import numpy as np
-import scipy
+from glob import glob
+from tqdm import tqdm
+from random import randrange
 from scipy.io import wavfile
 
 from util.utils import get_field, get_xyz, steering_operator
@@ -113,12 +115,16 @@ def form_visibility(data, rate, fc, bw, T_sti, T_stationarity):
         .sum(axis=1))
     return S
 
-def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3):
-    # audio_in, fs = self._load_audio(audio_filename)
-    nbands = 10
-    freq, bw = (skutil  # Center frequencies to form images
-        .view_as_windows(np.linspace(1500, 4500, nbands), (2,), 1)
-        .mean(axis=-1)), 50.0  # [Hz]
+def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3, scale="linear", nbands=9):
+    freq, bw = None, None
+    if scale == "linear":
+        freq, bw = (skutil  # Center frequencies to form images
+            .view_as_windows(np.linspace(1500, 4500, nbands), (2,), 1)
+            .mean(axis=-1)), 50.0  # [Hz]
+    elif scale == "log":
+        freq, bw = librosa.mel_frequencies(n_mels=nbands, fmin=50, fmax=4500), 50    
+    else:
+        raise Exception("Not a valid scale to generate covariance matrices (log, linear)")
 
     R = get_field()
     xyz = get_xyz()
@@ -128,7 +134,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3):
     
     visibilities = []
     apgd_map = []
-    for i in range(nbands-1):
+    for i in range(nbands):
         T_sti = T_sti
         T_stationarity = 10 * T_sti  # Choose to have frame_rate = 10
         S = form_visibility(audio_in, fs, freq[i], bw, T_sti, T_stationarity)
@@ -154,6 +160,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3):
         apgd_map.append(apgd_per_band)
         visibilities.append(visibilities_per_frame)
 
+    print(np.array(visibilities).shape)
     return np.array(visibilities), np.array(apgd_map) 
 
 def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
@@ -177,10 +184,10 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
             T_sti = random.choice(T_logs_spaced)
 
             fs, eigen_sig = wavfile.read(clip_name)
-            vsg_sig, apgd = get_visibility_matrix(eigen_sig, fs, apgd=True, bands=[], T_sti=T_sti) # visibility graph matrix 32ch 
+            vsg_sig, apgd = get_visibility_matrix(eigen_sig, fs, apgd=True, bands=[], T_sti=T_sti, scale="log", nbands=16) # visibility graph matrix 32ch 
 
             mic_sig = eigen_sig[:, [5,9,25,21]] # 4 ch raw MIC
-            mic_vsg_sig, _ = get_visibility_matrix(mic_sig, fs, apgd=False, bands=[], T_sti=T_sti)
+            mic_vsg_sig, _ = get_visibility_matrix(mic_sig, fs, apgd=False, bands=[], T_sti=T_sti, scale="log", nbands=16) # visibility graph matrix 4ch 
             mic_data.append(mic_vsg_sig.transpose(1, 0, 2, 3))
             vg_labels.append(vsg_sig.transpose(1, 0, 2, 3)) # (nframes, nbands, nch, nch)
             apgd_labels.append(apgd.transpose(1, 0, 2)) # (nframes, nbands, Npx)
@@ -209,8 +216,37 @@ def create_full_hdf_data(dataset_name='train', data_src=None, save_path=None):
         del a_np, b_np
         gc.collect()            
 
-## Parameters used to train network with ARNI+METU dataset that constains some silence
-#save_path = "data_hdf"
-#os.makedirs(save_path, exist_ok=True)
-#data_src = "/scratch/data/repos/LAM/dataset/simulated/arni_eval_output_vardur_poly2_maxdur2s"
-#create_full_hdf_data(dataset_name='arni_eval_output_vardur_poly2_maxdur2s', data_src=data_src, save_path=save_path)
+
+def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Generate HDF5 dataset for LAM training.")
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        required=True,
+        help="Name of the dataset to be processed.",
+    )
+    parser.add_argument(
+        "--data_src",
+        type=str,
+        required=True,
+        help="Path to the source data directory.",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default="data_hdf",
+        help="Directory where the HDF5 file will be saved. Default: data_hdf",
+    )
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Ensure save path exists
+    os.makedirs(args.save_path, exist_ok=True)
+
+    # Call the function
+    create_full_hdf_data(dataset_name=args.dataset_name, data_src=args.data_src, save_path=args.save_path)
+
+if __name__ == "__main__":
+    main()
