@@ -1,13 +1,13 @@
 {
     "seed": 0,
     "description": "...des",
-    "root_dir": "/scratch/data/repos/LAM",
+    "root_dir": "/path/to/LAM",
     "cudnn_deterministic": false,
     "trainer": {
         "module": "trainer.trainer",
         "main": "Trainer",
         "epochs": 50,
-	    "upsample": true,
+	    "upsample": false,
         "save_checkpoint_interval": 1,
         "validation": {
 		"interval": 1,
@@ -39,17 +39,17 @@
         "module": "dataset.dataloader_multi_hdf",
         "main": "Dataset",
         "args": {
-            "path_to_datasets": "/scratch/ssd1/LAM_datasets/hdf_datasets_wideband_16band",
+            "path_to_datasets": "/path/to/train_datasets",
             "freq_band": null,
 	    "mode": "train", 
-	    "leave_out": ["arni.hdf", "daga.hdf", "motus.hdf"] 
+	    "leave_out": ["dataset1.hdf", "dataset2.hdf", "dataset3.hdf"] 
         }
     },
     "validation_dataset": {
     	"module": "dataset.dataloader_multi_hdf",
         "main": "Dataset",
         "args": {
-            "path_to_datasets": "/scratch/ssd1/LAM_datasets/hdf_datasets_wideband_16band_val",
+            "path_to_datasets": "/path/to/val_datasets",
             "freq_band": null,
             "mode": "validation", 
             "leave_out": []
