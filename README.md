@@ -1,5 +1,7 @@
-# LAM
-Work in progress: Latent Acoustic Map
+# Latent Acoustic Mapping for Direction of Arrival Estimation: A Self-Supervised Approach
+
+> [!WARNING]
+> LAM is still undergoing active development. The repo will be finalized prior to WASPAA 2025. However, please open an issue and describe any errors you encounter. Also, make sure to pull often, as we are actively adding more features.
 
 ## Installation
 
