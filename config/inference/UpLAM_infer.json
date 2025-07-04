@@ -8,18 +8,18 @@
         "module": "dataset.inference_dataloader",
         "main": "InferenceDataset",
         "args": {
-            "dataset": "/scratch/ssd1/LAM_datasets/starss_test/mic/"
+            "dataset": "/path/to/infer_dir/"
         }
     },
-    "model_path": "/path/to/train_UpLAM_MSE_TV_L1_16bands/checkpoints/model.pth",
-    "output_dir": "output_infer_starss_4ch",
+    "model_path": "/path/to/your_trained_model/checkpoints/model.pth",
+    "output_dir": "/path/to/your_output_dir",
     "n_max": 18,
     "num_workers": 12,
     "FS": 24000,
     "doa_params": {
-        "ground_truths": "/scratch/ssd1/LAM_datasets/starss_test",
-        "predictions": "output_infer_starss_4ch",
-        "lad_doa_thresh": 25,
+        "ground_truths": "/path/to/doa/metadata/starss_test",
+        "predictions": "/path/to/your_output_dir",
+        "lad_doa_thresh": 20,
         "average": "macro",
         "num_classes": 1
     }
