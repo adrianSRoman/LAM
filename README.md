@@ -7,6 +7,15 @@
 
 See [installation instructions](docs/INSTALL.md).
 
+## Datasets
+
+| Dataset     | Format | Type | URL                                                                                 |
+|-------------|-------------|-----------|-------------------------------------------------------------------------------------|
+| EigenScape | em32 | real | [Link](https://zenodo.org/records/1012809) |
+| STARSS23 | mic & em32 | real | [Link](https://zenodo.org/records/7880637)|
+| LOCATA | em32 | real | [Link](https://zenodo.org/records/3630471) |
+| SpatialScaper Simulated Audio | mic & em32 | synthetic | [Link](https://github.com/marl/SpatialScaper) |
+
 ## Generate dataset
 
 See [more details on how to generate the HDF dataset](dataset/gen_dataset/README.md).
