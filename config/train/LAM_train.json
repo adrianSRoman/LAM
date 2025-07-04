@@ -1,0 +1,64 @@
+{
+    "seed": 0,
+    "description": "...des",
+    "root_dir": "/scratch/data/repos/LAM",
+    "cudnn_deterministic": false,
+    "trainer": {
+        "module": "trainer.trainer",
+        "main": "Trainer",
+        "epochs": 50,
+	    "upsample": true,
+        "save_checkpoint_interval": 1,
+        "validation": {
+		"interval": 1,
+		"find_max": true,
+		"custom": {
+                "visualize_limit": 30
+            }
+        }
+    },
+    "model": {
+        "module": "model.LAM",
+        "main": "LAM",
+	"args": {
+	}
+    },
+    "loss_function": {
+        "module": "model.loss",
+        "main": "MSETVLoss",
+        "args": {
+		"l1_weight": 0.00001
+	}
+    },
+    "optimizer": {
+        "lr": 0.000001,
+        "beta1": 0.9,
+        "beta2": 0.999
+    },
+    "train_dataset": {
+        "module": "dataset.dataloader_multi_hdf",
+        "main": "Dataset",
+        "args": {
+            "path_to_datasets": "/scratch/ssd1/LAM_datasets/hdf_datasets_wideband_16band",
+            "freq_band": null,
+	    "mode": "train", 
+	    "leave_out": ["arni.hdf", "daga.hdf", "motus.hdf"] 
+        }
+    },
+    "validation_dataset": {
+    	"module": "dataset.dataloader_multi_hdf",
+        "main": "Dataset",
+        "args": {
+            "path_to_datasets": "/scratch/ssd1/LAM_datasets/hdf_datasets_wideband_16band_val",
+            "freq_band": null,
+            "mode": "validation", 
+            "leave_out": []
+        }
+    },
+    "train_dataloader": {
+        "batch_size": 8,
+        "num_workers": 40,
+        "shuffle": true,
+        "pin_memory": true
+    }
+}
