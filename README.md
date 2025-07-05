@@ -28,6 +28,8 @@ Use `train.py` to train the model.
 - `-C, --config`, specify the configuration file required for training
 - `-R, --resume`, continue training from the checkpoint of the last saved model
 
+Please refer to the config files [README](configs/train/README.md) to understand how to setup your training config.
+
 Example:
 ```
 # The configuration file used to train the model is "config/train/train.json"
@@ -44,6 +46,8 @@ Use `infer.py` to run inference with a pre-trained model.
 - `-h`, display help information
 - `-D, --device`, GPU index to be use (0 for single GPU / default)
 - `-C, --config`, Configuration for k-means inference (*.json).
+
+Please refer to the config files [README](configs/infer/README.md) to understand how to setup your inference config.
 
 ```
 python infer.py -C /path/to/config/inference.json -D 0
