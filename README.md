@@ -1,5 +1,9 @@
 # Latent Acoustic Mapping for Direction of Arrival Estimation: A Self-Supervised Approach
 
+<p align="center">
+  <img src="docs/lam_arch.png" alt="LAM Architecture" width="700"/>
+</p>
+
 > [!WARNING]
 > LAM is still undergoing active development. The repo will be finalized prior to WASPAA 2025. However, please open an issue and describe any errors you encounter. Also, make sure to pull often, as we are actively adding more features.
 
@@ -63,6 +67,10 @@ python infer.py -C config/inference/inference.json -D 0
 ```
 python doa_metrics.py -C /path/to/config/inference.json
 ```
+
+## Sound Event Localization using LAM
+
+Use LAM's spherical acoustic maps (SAMs) as features to a SELD network (DCASE-style). Please refer to the [seld](seld) directory, where you can perform batch feature extraction of SAMS and then train a network to perform DOA on datasets like STARSS23 or LOCATA.
 
 ## Visualization
 ```
