@@ -80,3 +80,15 @@ tensorboard --logdir train
 # You can use --port to specify the port of the tensorboard static server
 tensorboard --logdir train --port <port> --bind_all
 ```
+
+## Citation
+
+If you find our work useful, please cite our paper:
+
+```
+@article{roman2025latent,
+  title={Latent Acoustic Mapping for Direction of Arrival Estimation: A Self-Supervised Approach},
+  author={Roman, Adrian S, Roman, Iran R and Bello, Juan P},
+  journal={IEEE Workshop on Appplications of Signal Processing to Audio and Acoustics},
+  year={2025}
+}
