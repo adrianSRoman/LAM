@@ -43,7 +43,7 @@ python train.py -C config/train/train.json
 python train.py -C config/train/train.json -R
 ```
 
-## Inference (K-means)
+## Inference
 
 Use `infer.py` to run inference with a pre-trained model.
 
