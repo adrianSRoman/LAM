@@ -85,8 +85,8 @@ tensorboard --logdir train --port <port> --bind_all
 
 | Model  | Input | Checkpoint |
 |-------------|-------------|-----------------|
-| UpLAM | 4-channel | [LAM.pth](checkpoints/LAM.pth) |
-| LAM | 32-channel | [UpLAM.pth](checkpoints/UpLAM.pth) |
+| UpLAM | 4-channel | [UpLAM.pth](checkpoints/UpLAM.pth) |
+| LAM | 32-channel | [LAM.pth](checkpoints/LAM.pth) |
 
 ## Citation
 
