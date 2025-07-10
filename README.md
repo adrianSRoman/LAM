@@ -81,6 +81,13 @@ tensorboard --logdir train
 tensorboard --logdir train --port <port> --bind_all
 ```
 
+# Pre-trained Models
+
+| Model  | Input | Checkpoint |
+|-------------|-------------|-----------------|
+| UpLAM | 4-channel | [LAM.pth](checkpoints/LAM.pth) |
+| LAM | 32-channel | [UpLAM.pth](checkpoints/UpLAM.pth) |
+
 ## Citation
 
 If you find our work useful, please cite our paper:
