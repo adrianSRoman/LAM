@@ -9,9 +9,6 @@
   <img src="docs/lam_arch.png" alt="LAM Architecture" width="700"/>
 </p>
 
-> [!WARNING]
-> LAM is still undergoing active development. The repo will be finalized prior to WASPAA 2025. However, please open an issue and describe any errors you encounter. Also, make sure to pull often, as we are actively adding more features.
-
 ## Installation
 
 See [installation instructions](docs/INSTALL.md).
