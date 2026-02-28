@@ -1,0 +1,19 @@
+{
+    "model": {
+        "module": "model.bproj",
+        "main": "BackProjLayer",
+        "args": {}
+    },
+    "dataset": {
+        "module": "dataset.inference_dataloader",
+        "main": "InferenceDataset",
+        "args": {
+            "dataset": "/scratch/ssd1/audio_datasets/LOCATA_EM32/mic_dev/mic/"
+        }
+    },
+    "n_max": 20,
+    "num_workers": 12,
+    "FS": 24000,
+    "custom": {
+    }
+}

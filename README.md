@@ -53,7 +53,7 @@ Use `infer.py` to run inference with a pre-trained model.
 - `-D, --device`, GPU index to be use (0 for single GPU / default)
 - `-C, --config`, Configuration for k-means inference (*.json).
 
-Please refer to the config files [config/infer/README](config/infer/README.md) to understand how to setup your inference config.
+Please refer to the config files [config/inference/README](config/inference/README.md) to understand how to setup your inference config.
 
 ```
 python infer.py -C /path/to/config/inference.json -D 0
