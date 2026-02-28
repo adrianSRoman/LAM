@@ -134,7 +134,7 @@ def get_visibility_matrix(audio_in, fs, apgd=False, bands=[], T_sti=10e-3, scale
     
     visibilities = []
     apgd_map = []
-    for i in range(nbands):
+    for i in range(nbands-1):
         T_sti = T_sti
         T_stationarity = 10 * T_sti  # Choose to have frame_rate = 10
         S = form_visibility(audio_in, fs, freq[i], bw, T_sti, T_stationarity)
