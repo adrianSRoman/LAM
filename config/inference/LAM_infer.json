@@ -1,19 +1,21 @@
 {
     "model": {
-        "module": "model.bproj",
-        "main": "BackProjLayer",
-        "args": {}
+        "module": "model.LAM",
+        "main": "LAM",
+        "args": {
+            "num_bands": 9
+        }
     },
     "dataset": {
         "module": "dataset.inference_dataloader",
         "main": "InferenceDataset",
         "args": {
-            "dataset": "/scratch/ssd1/audio_datasets/LOCATA_EM32/mic_dev/mic/"
+            "dataset": "/scratch/ssd1/audio_datasets/LOCATA/LOCATA_eval_eigenmike_16k"
         }
     },
-    "n_max": 20,
-    "num_workers": 12,
+    "model_path": "checkpoints/LAM.pth",
+    "output_dir": "output_visualize_LAM",
     "FS": 24000,
-    "custom": {
-    }
+    "n_max": 20,
+    "T_sti_ms": 100
 }
